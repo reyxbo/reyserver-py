@@ -350,7 +350,7 @@ async def depend_user(token: TokenData = Bind.Depend(depend_token)) -> User:
     # Instance.
     user = User(token)
 
-    return token_data
+    return user
 
 Bind.TokenData = TokenData
 Bind.token = Bind.Depend(depend_token)
@@ -651,13 +651,14 @@ async def update_user_name(
 
     # Update.
     sql_where = f'"user_id" = "{user.user_id}"'
-    await sess.update(DatabaseORMTableUser).values('name'=name).where(sql_where).execute()
+    await sess.update(DatabaseORMTableUser).values(name=name).where(sql_where).execute()
 
 @router_auth.patch('/user/password')
 async def update_user_password(
     password: str = Bind.i.body_k,
     new_password: str = Bind.i.body_k,
     user: Bind.User = Bind.user,
+    conn: Bind.Conn = Bind.conn.auth,
     sess: Bind.Sess = Bind.sess.auth
 ) -> None:
     """
@@ -676,8 +677,8 @@ async def update_user_password(
 
     # Update.
     new_password = hash_bcrypt(new_password)
-    sql_where = f'"user_id" = "{token['user_id']}"'
-    await sess.update(DatabaseORMTableUser).values('password'=new_password).where(sql_where).execute()
+    sql_where = f'"user_id" = "{user.user_id}"'
+    await sess.update(DatabaseORMTableUser).values(password=new_password).where(sql_where).execute()
 
 @router_auth.patch('/user/email')
 async def update_user_email(
@@ -700,7 +701,7 @@ async def update_user_email(
 
     # Update.
     sql_where = f'"user_id" = "{user.user_id}"'
-    await sess.update(DatabaseORMTableUser).values('email'=new_email).where(sql_where).execute()
+    await sess.update(DatabaseORMTableUser).values(email=new_email).where(sql_where).execute()
 
 @router_auth.patch('/user/phone')
 async def update_user_phone(
@@ -723,7 +724,7 @@ async def update_user_phone(
 
     # Update.
     sql_where = f'"user_id" = "{user.user_id}"'
-    await sess.update(DatabaseORMTableUser).values('phone'=new_phone).where(sql_where).execute()
+    await sess.update(DatabaseORMTableUser).values(phone=new_phone).where(sql_where).execute()
 
 @router_auth.patch('/user/avatar')
 async def update_user_avatar(
@@ -749,10 +750,10 @@ async def update_user_avatar(
 
     # Update.
     sql_where = f'"user_id" = "{user.user_id}"'
-    await sess.update(DatabaseORMTableUser).values('avatar'=file_id).where(sql_where).execute()
+    await sess.update(DatabaseORMTableUser).values(avatar=file_id).where(sql_where).execute()
     await sess.commit()
 
     # Get.
-    sess.get(DatabaseORMModelUserOut, token['user_id'])
+    sess.get(DatabaseORMModelUserOut, user.user_id)
 
     return file_id
