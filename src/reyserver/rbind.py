@@ -8,7 +8,7 @@
 @Explain : Dependency bind methods.
 """
 
-from typing import overload, TYPE_CHECKING
+from typing import TypedDict, NotRequired, Literal, overload, TYPE_CHECKING
 from pydantic import EmailStr
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.params import (
@@ -21,14 +21,19 @@ from fastapi.params import (
     Form,
     File as Forms
 )
+from fastapi.security import OAuth2PasswordBearer
 from reydb.rconn import DatabaseConnectionAsync
 from reydb.rorm import DatabaseORMSessionAsync
 from reykit.rbase import StaticMeta, Singleton, throw
+from reykit.rdata import decode_jwt
+from reykit.ros import get_md5
+from reykit.rre import search_batch
 
-from .rbase import ServerBase, depend_pass
+from .rbase import ServerBase, exit_api, depend_pass
 
 if TYPE_CHECKING:
-    from .rauth import TokenData, User
+    from .rauth import Token, TokenStr
+    from .rfile import DatabaseORMTableInfo, DatabaseORMTableData
     from .rserver import Server
 
 __all__ = (
@@ -39,6 +44,23 @@ __all__ = (
     'ServerBind',
     'Bind'
 )
+
+class User(ServerBase):
+    """
+    User data type.
+    """
+
+    def __init__(self, token: 'Token') -> None:
+        """
+        Build instance attributes.
+
+        Parameters
+        ----------
+        token : Token data.
+        """
+
+        # Build.
+        self.user_id = token['user_id']
 
 class ServerBindInstanceDatabaseSuper(ServerBase):
     """
@@ -272,25 +294,6 @@ class ServerBindInstance(ServerBase, Singleton):
 
         return forms
 
-async def depend_server(request: Request) -> 'Server':
-    """
-    Dependencie function of now Server instance.
-
-    Parameters
-    ----------
-    request : Request.
-
-    Returns
-    -------
-    Server.
-    """
-
-    # Get.
-    app: FastAPI = request.app
-    server: Server = app.extra['server']
-
-    return server
-
 class ServerBind(ServerBase, metaclass=StaticMeta):
     """
     Server API bind parameter type.
@@ -312,30 +315,190 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     'Request body form parameter dependency type.'
     Forms = Forms
     'Request body multiple forms parameter dependency type.'
-    File = UploadFile
-    'Type hints file type.'
+    UploadFile = UploadFile
+    'Type hints upload file type.'
     Depend = Depends
     'Dependency type.'
     Email= EmailStr
     Conn = DatabaseConnectionAsync
     Sess = DatabaseORMSessionAsync
-    server: Depend = Depend(depend_server)
-    'Server instance dependency type.'
     i = ServerBindInstance()
     'Server API bind parameter build instance.'
     conn = ServerBindInstanceDatabaseConnection()
     'Server API bind parameter asynchronous database connection.'
     sess = ServerBindInstanceDatabaseSession()
     'Server API bind parameter asynchronous database session.'
+    server: Depend = depend_pass
+    'Server instance dependency type.'
     token: Depend = depend_pass
     'Server authentication token dependency type.'
     user: Depend = depend_pass
     'Current session user data dependency type.'
+    file: Depend = depend_pass
+    'Upload file data dependency type.'
+    User = User
     if TYPE_CHECKING:
         Server = Server
-        TokenData = TokenData
-        User = User
+        Token = Token
+        FileModelInfo = DatabaseORMTableInfo
+        FileModelData = DatabaseORMTableData
+        FileModels = tuple[DatabaseORMTableInfo, DatabaseORMTableData]
     else:
-        Server = TokenData = User = None
+        Server = Token = FileModelInfo = FileModelData = FileModels = None
 
 Bind = ServerBind
+
+async def depend_server(request: Request) -> Bind.Server:
+    """
+    Dependencie function of now Server instance.
+
+    Parameters
+    ----------
+    request : Request.
+
+    Returns
+    -------
+    Server.
+    """
+
+    # Get.
+    app: FastAPI = request.app
+    server: Server = app.extra['server']
+
+    return server
+
+bearer = OAuth2PasswordBearer(
+    tokenUrl='/auth/token',
+    scheme_name='OAuth2Password',
+    description='Authentication of OAuth2 password model.',
+    auto_error=False
+)
+
+async def depend_token(
+    request: Request,
+    server: Bind.Server = Bind.server,
+    token_str: 'TokenStr | None' = Bind.Depend(bearer)
+) -> Bind.Token:
+    """
+    Dependencie function of authentication token.
+    If the verification fails, then response status code is 401 or 403.
+
+    Parameters
+    ----------
+    request : Request.
+    server : Server.
+    token_str : Authentication token string.
+
+    Returns
+    -------
+    Token data dictionary.
+    """
+
+    # Check.
+    if not server.is_started_auth:
+        return
+
+    # Parameter.
+    key = server.api_auth_key
+    api_path = f'{request.method} {request.url.path}'
+
+    # Cache.
+    token: Token | None = getattr(request.state, 'token', None)
+
+    # Decode.
+    if token is None:
+        token: Token | None = decode_jwt(token_str, key)
+        if token is None:
+            exit_api(401)
+        request.state.token = token
+
+    # Authentication.
+    perm_apis = [
+        f'^{pattern}'
+        for pattern in token['perm_apis']
+    ]
+    result = search_batch(api_path, *perm_apis)
+    if result is None:
+        exit_api(403)
+
+    return token
+
+async def depend_user(token: Bind.Token = Bind.Depend(depend_token)) -> User:
+    """
+    Dependencie function of user data.
+
+    Parameters
+    ----------
+    token : token data.
+
+    Returns
+    -------
+    User data.
+    """
+
+    # Instance.
+    user = User(token)
+
+    return user
+
+async def depend_file(
+    file: Bind.UploadFile = Bind.i.forms,
+    name: str | None = Bind.i.forms_n,
+    note: str | None = Bind.i.forms_n,
+    sess: Bind.Sess = Bind.sess.file,
+    server: Bind.Server = Bind.server
+) -> Bind.FileModels:
+    """
+    Upload file data.
+
+    Parameters
+    ----------
+    file : File instance.
+    name : File name.
+        - `None`: Use `file.filename`.
+    note : File note.
+
+    Returns
+    -------
+    File information and data.
+    """
+
+    # Parameter.
+    file_store = server.api_file_store
+    file_bytes = await file.read()
+    file_md5 = get_md5(file_bytes)
+    file_size = len(file_bytes)
+    if name is None:
+        name = file.filename
+
+    # Upload.
+    file_path = file_store.index(file_md5)
+
+    ## Data.
+    if file_path is None:
+        file_path = file_store.store(file_bytes)
+        file_relpath = file_store.get_relpath(file_path)
+        model_data = DatabaseORMTableData(
+            md5=file_md5,
+            size=file_size,
+            path=file_relpath
+        )
+        await sess.add(model_data)
+
+    ## Information.
+    model_info = DatabaseORMTableInfo(
+        md5=file_md5,
+        name=name,
+        note=note
+    )
+    await sess.add(model_info)
+
+    # Get ID.
+    await sess.flush()
+
+    return model_info, model_data
+
+Bind.server = Bind.Depend(depend_server)
+Bind.token = Bind.Depend(depend_token)
+Bind.user = Bind.Depend(depend_user)
+Bind.file = Bind.Depend(depend_file)

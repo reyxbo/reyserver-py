@@ -10,15 +10,14 @@
 
 from typing import Any, TypedDict, NotRequired, Literal
 from datetime import datetime as Datetime, timedelta as Timedelta
-from fastapi import APIRouter, Request
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import APIRouter
 from reyclient.rali import ClientAliVerifySms
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rbase import throw
-from reykit.rdata import encode_jwt, decode_jwt, hash_bcrypt, is_hash_bcrypt
+from reykit.rdata import encode_jwt, hash_bcrypt, is_hash_bcrypt
 from reykit.remail import Email
 from reykit.rrand import randchar
-from reykit.rre import PATTERN_EMAIL, PATTERN_PHONE, search, search_batch
+from reykit.rre import PATTERN_EMAIL, PATTERN_PHONE, search
 from reykit.rtime import now
 
 from .rbase import ServerBase, exit_api
@@ -34,12 +33,10 @@ __all__ = (
     'DatabaseORMModelUserOut',
     'ServerVerifyEmail',
     'build_db_auth',
-    'router_auth',
-    'router_auth_email',
-    'router_auth_sms'
+    'router_auth'
 )
 
-User = TypedDict(
+UserData = TypedDict(
     'UserData',
     {
         'create_time': float,
@@ -55,8 +52,9 @@ User = TypedDict(
         'password': NotRequired[str]
     }
 )
-TokenData = TypedDict(
-    'TokenData',
+'User data dictionary.'
+Token = TypedDict(
+    'Token',
     {
         'sub': str,
         'iat': int,
@@ -66,15 +64,19 @@ TokenData = TypedDict(
         'perm_apis': list[str]
     }
 )
-type Token = str
+'Token data dictionary.'
+type TokenStr = str
+'Token string.'
 JSONToken = TypedDict(
     'JSONToken',
     {
-        'access_token': Token,
+        'access_token': TokenStr,
         'token_type': Literal['Bearer']
     }
 )
+'JSON dictionary with Token string.'
 type VerificationScenes = Literal['token', 'signup', 'reset']
+'Verification scene range.'
 
 class DatabaseORMTableUser(rorm.Table):
     """
@@ -195,7 +197,7 @@ class DatabaseORMTableVerifyPhone(rorm.Table):
     verify_count: int = rorm.Field(rorm.types.SMALLINT, field_default='0', not_null=True, comment='Verify count.')
     used: bool = rorm.Field(field_default='FALSE', not_null=True, comment='Is the used.')
 
-class DatabaseORMModelUserInput(rorm.model):
+class DatabaseORMModelUserInput(rorm.Model):
     """
     Database input user ORM model.
     """
@@ -279,7 +281,7 @@ class ServerVerifyEmail(ServerBase):
 
     def send(self, scene: str, email: str) -> str:
         """
-        Send random verification code sms.
+        Send email with random verification code.
 
         Parameters
         ----------
@@ -329,7 +331,7 @@ class ServerVerifyEmail(ServerBase):
 
     async def async_send(self, scene: str, email: str) -> str:
         """
-        Asynchronous send random verification code sms.
+        Asynchronous send email with random verification code.
 
         Parameters
         ----------
@@ -554,7 +556,7 @@ class ServerVerifyEmail(ServerBase):
         ]
 
         # Build.
-        self.db_engine.build(tables=tables, views_stats=views_stats, skip=True)
+        self.db_engine.sync_engine.build(tables=tables, views_stats=views_stats, skip=True)
 
 class ServerVerifyPhone(ServerBase):
     """
@@ -594,7 +596,7 @@ class ServerVerifyPhone(ServerBase):
 
     def send(self, scene: str, phone: str) -> str:
         """
-        Send random verification code sms.
+        Send sms with random verification code.
 
         Parameters
         ----------
@@ -641,7 +643,7 @@ class ServerVerifyPhone(ServerBase):
 
     async def async_send(self, scene: str, phone: str) -> str:
         """
-        Asynchronous send random verification code sms.
+        Asynchronous send sms with random verification code.
 
         Parameters
         ----------
@@ -863,7 +865,7 @@ class ServerVerifyPhone(ServerBase):
         ]
 
         # Build.
-        self.db_engine.build(tables=tables, views_stats=views_stats, skip=True)
+        self.db_engine.sync_engine.build(tables=tables, views_stats=views_stats, skip=True)
 
 def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
@@ -956,102 +958,6 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     # Build.
     engine.sync_engine.build(tables=tables, views_stats=views_stats, skip=True)
 
-bearer = OAuth2PasswordBearer(
-    tokenUrl='/auth/token',
-    scheme_name='OAuth2Password',
-    description='Authentication of OAuth2 password model.',
-    auto_error=False
-)
-
-async def depend_token(
-    request: Request,
-    server: Bind.Server = Bind.server,
-    token: Token | None = Bind.Depend(bearer)
-) -> TokenData:
-    """
-    Dependencie function of authentication token.
-    If the verification fails, then response status code is 401 or 403.
-
-    Parameters
-    ----------
-    request : Request.
-    server : Server.
-    token : Authentication token.
-
-    Returns
-    -------
-    Token data.
-    """
-
-    # Check.
-    if not server.is_started_auth:
-        return
-
-    # Parameter.
-    key = server.api_auth_key
-    api_path = f'{request.method} {request.url.path}'
-
-    # Cache.
-    token_data: TokenData | None = getattr(request.state, 'token_data', None)
-
-    # Decode.
-    if token_data is None:
-        token_data: TokenData | None = decode_jwt(token, key)
-        if token_data is None:
-            exit_api(401)
-        request.state.token_data = token_data
-
-    # Authentication.
-    perm_apis = [
-        f'^{pattern}'
-        for pattern in token_data['perm_apis']
-    ]
-    result = search_batch(api_path, *perm_apis)
-    if result is None:
-        exit_api(403)
-
-    return token_data
-
-class User(ServerBase):
-    """
-    User data.
-    """
-
-    def __init__(self, token: TokenData) -> None:
-        """
-        Build instance attributes.
-
-        Parameters
-        ----------
-        token : Token data.
-        """
-
-        # Build.
-        self.user_id = token['user_id']
-
-async def depend_user(token: TokenData = Bind.Depend(depend_token)) -> User:
-    """
-    Dependencie function of user data.
-
-    Parameters
-    ----------
-    token : token data.
-
-    Returns
-    -------
-    User data.
-    """
-
-    # Instance.
-    user = User(token)
-
-    return user
-
-Bind.TokenData = TokenData
-Bind.token = Bind.Depend(depend_token)
-Bind.User = User
-Bind.user = Bind.Depend(depend_user)
-
 router_auth = APIRouter()
 
 def get_account_type(account: str) -> Literal['name', 'email', 'phone']:
@@ -1082,7 +988,7 @@ async def get_user_data(
     index: str | int,
     index_type: Literal['user_id', 'name', 'email', 'phone', 'account'],
     filter_invalid: bool = True
-) -> User | None:
+) -> UserData | None:
     """
     Get user data.
 
@@ -1177,7 +1083,7 @@ async def get_user_data(
             row['perm_names'] = ''
         if row['perm_apis'] is None:
             row['perm_apis'] = ''
-        info: User = {
+        info: UserData = {
             'create_time': row['create_time'].timestamp(),
             'update_time': row['update_time'].timestamp(),
             'user_id': row['user_id'],
@@ -1194,10 +1100,10 @@ async def get_user_data(
     return info
 
 def encode_token(
-    data: User,
+    data: UserData,
     key: str,
     seconds: int
-) -> Token:
+) -> TokenStr:
     """
     Encode data to token string.
 
@@ -1214,7 +1120,7 @@ def encode_token(
 
     # Create.
     now_timestamp_s = now('timestamp_s')
-    json: TokenData = {
+    json: Token = {
         'sub': str(data['user_id']),
         'iat': now_timestamp_s,
         'nbf': now_timestamp_s,
@@ -1361,7 +1267,7 @@ async def create_user(
     await sess.commit()
 
     # Token.
-    user_data: User = await get_user_data(conn, user_id, 'user_id')
+    user_data: UserData = await get_user_data(conn, user_id, 'user_id')
     token = encode_token(
         user_data,
         server.api_auth_key,
@@ -1439,7 +1345,7 @@ async def send_email_code(
     # Check.
     is_exists = await check_user_exists(email=email)
     if not is_exists:
-        exit_api(404)
+        exit_api(404, text='user email address not exists')
 
     # Send.
     await client_email.async_send(scene, email)
@@ -1465,7 +1371,7 @@ async def send_phone_code(
     # Check.
     is_exists = await check_user_exists(phone=phone)
     if not is_exists:
-        exit_api(404)
+        exit_api(404, text='user phone number not exists')
 
     # Send.
     await client_sms.async_send(scene, phone)
@@ -1476,7 +1382,7 @@ async def verify_email_code(
     email: Bind.Email = Bind.i.body,
     code: str = Bind.Body(min_length=4, max_length=8),
     server: Bind.Server = Bind.server
-):
+) -> bool:
     """
     Verify email verification code.
 
@@ -1485,6 +1391,10 @@ async def verify_email_code(
     scene : Usage scene.
     email : Email address.
     code : Verification code.
+
+    Returns
+    -------
+    Result.
     """
 
     # Parmeter.
@@ -1493,12 +1403,7 @@ async def verify_email_code(
     # Verify.
     result = await client_email.async_verify(scene, email, code)
 
-    # Response.
-    response = {
-        'success': result
-    }
-
-    return response
+    return result
 
 @router_auth.post('/phone_codes/verify')
 async def verify_phone_code(
@@ -1506,7 +1411,7 @@ async def verify_phone_code(
     phone: str = Bind.i.body,
     code: str = Bind.Body(min_length=4, max_length=8),
     server: Bind.Server = Bind.server
-):
+) -> bool:
     """
     Verify phone verification code.
 
@@ -1515,6 +1420,10 @@ async def verify_phone_code(
     scene : Usage scene.
     phone : Phone number.
     code : Verification code.
+
+    Returns
+    -------
+    Result.
     """
 
     # Parmeter.
@@ -1523,12 +1432,7 @@ async def verify_phone_code(
     # Verify.
     result = await client_phone.async_verify(scene, phone, code)
 
-    # Response.
-    response = {
-        'success': result
-    }
-
-    return response
+    return result
 
 @router_auth.get('/user')
 async def get_user_info(
@@ -1585,7 +1489,7 @@ async def update_user_password(
     """
 
     # Check.
-    user_data: User = await get_user_data(conn, user.user_id, 'user_id')
+    user_data: UserData = await get_user_data(conn, user.user_id, 'user_id')
     if not is_hash_bcrypt(password, user_data['password']):
         exit_api(401)
 
@@ -1596,22 +1500,28 @@ async def update_user_password(
 
 @router_auth.patch('/user/email')
 async def update_user_email(
-    captcha: int = Bind.i.body_k,
     new_email: str = Bind.i.body_k,
+    code: int = Bind.i.body_k,
     user: Bind.User = Bind.user,
-    sess: Bind.Sess = Bind.sess.auth
+    sess: Bind.Sess = Bind.sess.auth,
+    server: Bind.Server = Bind.server
 ) -> None:
     """
     Update user email.
 
     Parameters
     ----------
-    captcha : Captcha.
     new_email : New user email.
+    code : Email verification code.
     """
 
+    # Parmeter.
+    client_email = server.api_auth_client_email
+
     # Check.
-    ...
+    result = await client_email.async_verify('reset', new_email, code, True)
+    if not result:
+        exit_api(text='parameter "code" verification failed')
 
     # Update.
     sql_where = f'"user_id" = "{user.user_id}"'
@@ -1619,22 +1529,28 @@ async def update_user_email(
 
 @router_auth.patch('/user/phone')
 async def update_user_phone(
-    captcha: int = Bind.i.body_k,
     new_phone: str = Bind.i.body_k,
+    code: int = Bind.i.body_k,
     user: Bind.User = Bind.user,
-    sess: Bind.Sess = Bind.sess.auth
+    sess: Bind.Sess = Bind.sess.auth,
+    server: Bind.Server = Bind.server
 ) -> None:
     """
     Update user phone number.
 
     Parameters
     ----------
-    captcha : Captcha.
     new_phone : New user phone number.
+    code : Sms verification code.
     """
 
+    # Parmeter.
+    client_phone = server.api_auth_client_phone
+
     # Check.
-    ...
+    result = await client_phone.async_verify('reset', new_phone, code, True)
+    if not result:
+        exit_api(text='parameter "code" verification failed')
 
     # Update.
     sql_where = f'"user_id" = "{user.user_id}"'
@@ -1642,32 +1558,25 @@ async def update_user_phone(
 
 @router_auth.patch('/user/avatar')
 async def update_user_avatar(
-    file: Bind.File = Bind.i.forms,
+    file_models: Bind.FileModels = Bind.file,
     user: Bind.User = Bind.user,
     sess: Bind.Sess = Bind.sess.auth
-) -> DatabaseORMModelUserOut:
+) -> int:
     """
     Update user phone number.
 
-    Parameters
-    ----------
-    code : Verification code.
-    new_phone : New user phone number.
-
     Returns
     -------
-    User information.
+    Avatar file ID.
     """
 
-    # Upload.
-    file_id = ...
+    # Parameter.
+    model_file_info = file_models[0]
+    file_id = model_file_info.file_id
 
     # Update.
     sql_where = f'"user_id" = "{user.user_id}"'
     await sess.update(DatabaseORMTableUser).values(avatar=file_id).where(sql_where).execute()
     await sess.commit()
-
-    # Get.
-    sess.get(DatabaseORMModelUserOut, user.user_id)
 
     return file_id

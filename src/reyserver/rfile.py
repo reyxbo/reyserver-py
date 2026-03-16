@@ -11,7 +11,6 @@
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
-from reykit.ros import get_md5
 
 from .rbase import exit_api
 from .rbind import Bind
@@ -207,20 +206,10 @@ async def get_file_info(
 
 @router_file.post('/')
 async def upload_file(
-    file: Bind.File = Bind.i.forms,
-    name: str | None = Bind.i.forms_n,
-    note: str | None = Bind.i.forms_n,
-    sess: Bind.Sess = Bind.sess.file,
-    server: Bind.Server = Bind.server
-) -> DatabaseORMTableInfo:
+    file_models: Bind.FileModels = Bind.file
+) -> Bind.FileModelInfo:
     """
     Upload file.
-
-    Parameters
-    ----------
-    file : File instance.
-    name : File name.
-    note : File note.
 
     Returns
     -------
@@ -228,37 +217,9 @@ async def upload_file(
     """
 
     # Parameter.
-    file_store = server.api_file_store
-    file_bytes = await file.read()
-    file_md5 = get_md5(file_bytes)
-    file_size = len(file_bytes)
+    model_file_info = file_models[0]
 
-    # Upload.
-    file_path = file_store.index(file_md5)
-
-    ## Data.
-    if file_path is None:
-        file_path = file_store.store(file_bytes)
-        file_relpath = file_store.get_relpath(file_path)
-        model_data = DatabaseORMTableData(
-            md5=file_md5,
-            size=file_size,
-            path=file_relpath
-        )
-        await sess.add(model_data)
-
-    ## Information.
-    model_info = DatabaseORMTableInfo(
-        md5=file_md5,
-        name=name,
-        note=note
-    )
-    await sess.add(model_info)
-
-    # Get ID.
-    await sess.flush()
-
-    return model_info
+    return model_file_info
 
 @router_file.get('/{file_id}/download')
 async def download_file(
