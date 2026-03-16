@@ -21,16 +21,15 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi_cache import FastAPICache
 from redis.asyncio import Redis
-from reyclient.rali import ClientAliVerifySms
 from reydb import DatabaseAsync
 from reykit.rbase import CoroutineFunctionSimple, Singleton, throw
 from reykit.ros import FileStore
 from reykit.rrand import randchar
 
-from . import rauth
 from .rbase import ServerBase
 from .rbind import Bind
 from .rcache import init_cache
+from . import rauth
 
 __all__ = (
     'Server',

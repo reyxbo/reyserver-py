@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from .rauth import Token, TokenStr
     from .rfile import DatabaseORMTableInfo, DatabaseORMTableData
     from .rserver import Server
+    type FileModels = tuple[DatabaseORMTableInfo, DatabaseORMTableData]
 
 __all__ = (
     'ServerBindInstanceDatabaseSuper',
@@ -44,23 +45,6 @@ __all__ = (
     'ServerBind',
     'Bind'
 )
-
-class User(ServerBase):
-    """
-    User data type.
-    """
-
-    def __init__(self, token: 'Token') -> None:
-        """
-        Build instance attributes.
-
-        Parameters
-        ----------
-        token : Token data.
-        """
-
-        # Build.
-        self.user_id = token['user_id']
 
 class ServerBindInstanceDatabaseSuper(ServerBase):
     """
@@ -83,16 +67,19 @@ class ServerBindInstanceDatabaseSuper(ServerBase):
         Dependencie instance.
         """
 
-        async def depend_func(server: 'Server' = Bind.server):
+        async def depend_func(request: Request):
             """
             Dependencie function of asynchronous database.
             """
 
-            # Check.
+            # Parameter.
+            app: FastAPI = request.app
+            server: Server = app.extra['server']
+
+            ## Check.
             if server.db is None:
                 throw(TypeError, server.db)
 
-            # Parameter.
             engine = server.db[name]
 
             # Context.
@@ -294,61 +281,7 @@ class ServerBindInstance(ServerBase, Singleton):
 
         return forms
 
-class ServerBind(ServerBase, metaclass=StaticMeta):
-    """
-    Server API bind parameter type.
-    """
-
-    Request = Request
-    'Reqeust instance dependency type.'
-    Path = Path
-    'URL source path dependency type.'
-    Query = Query
-    'URL query parameter dependency type.'
-    Header = Header
-    'Request header parameter dependency type.'
-    Cookie = Cookie
-    'Request header cookie parameter dependency type.'
-    Body = Body
-    'Request body JSON parameter dependency type.'
-    Form = Form
-    'Request body form parameter dependency type.'
-    Forms = Forms
-    'Request body multiple forms parameter dependency type.'
-    UploadFile = UploadFile
-    'Type hints upload file type.'
-    Depend = Depends
-    'Dependency type.'
-    Email= EmailStr
-    Conn = DatabaseConnectionAsync
-    Sess = DatabaseORMSessionAsync
-    i = ServerBindInstance()
-    'Server API bind parameter build instance.'
-    conn = ServerBindInstanceDatabaseConnection()
-    'Server API bind parameter asynchronous database connection.'
-    sess = ServerBindInstanceDatabaseSession()
-    'Server API bind parameter asynchronous database session.'
-    server: Depend = depend_pass
-    'Server instance dependency type.'
-    token: Depend = depend_pass
-    'Server authentication token dependency type.'
-    user: Depend = depend_pass
-    'Current session user data dependency type.'
-    file: Depend = depend_pass
-    'Upload file data dependency type.'
-    User = User
-    if TYPE_CHECKING:
-        Server = Server
-        Token = Token
-        FileModelInfo = DatabaseORMTableInfo
-        FileModelData = DatabaseORMTableData
-        FileModels = tuple[DatabaseORMTableInfo, DatabaseORMTableData]
-    else:
-        Server = Token = FileModelInfo = FileModelData = FileModels = None
-
-Bind = ServerBind
-
-async def depend_server(request: Request) -> Bind.Server:
+async def depend_server(request: Request) -> 'Server':
     """
     Dependencie function of now Server instance.
 
@@ -368,7 +301,7 @@ async def depend_server(request: Request) -> Bind.Server:
     return server
 
 bearer = OAuth2PasswordBearer(
-    tokenUrl='/auth/token',
+    tokenUrl='/api/auth/token',
     scheme_name='OAuth2Password',
     description='Authentication of OAuth2 password model.',
     auto_error=False
@@ -376,9 +309,9 @@ bearer = OAuth2PasswordBearer(
 
 async def depend_token(
     request: Request,
-    server: Bind.Server = Bind.server,
-    token_str: 'TokenStr | None' = Bind.Depend(bearer)
-) -> Bind.Token:
+    server: 'Server' = Depends(depend_server),
+    token_str: 'TokenStr | None' = Depends(bearer)
+) -> 'Token':
     """
     Dependencie function of authentication token.
     If the verification fails, then response status code is 401 or 403.
@@ -423,7 +356,24 @@ async def depend_token(
 
     return token
 
-async def depend_user(token: Bind.Token = Bind.Depend(depend_token)) -> User:
+class User(ServerBase):
+    """
+    User data type.
+    """
+
+    def __init__(self, token: 'Token') -> None:
+        """
+        Build instance attributes.
+
+        Parameters
+        ----------
+        token : Token data.
+        """
+
+        # Build.
+        self.user_id = token['user_id']
+
+async def depend_user(token: 'Token' = Depends(depend_token)) -> User:
     """
     Dependencie function of user data.
 
@@ -442,12 +392,12 @@ async def depend_user(token: Bind.Token = Bind.Depend(depend_token)) -> User:
     return user
 
 async def depend_file(
-    file: Bind.UploadFile = Bind.i.forms,
-    name: str | None = Bind.i.forms_n,
-    note: str | None = Bind.i.forms_n,
-    sess: Bind.Sess = Bind.sess.file,
-    server: Bind.Server = Bind.server
-) -> Bind.FileModels:
+    file: UploadFile = Forms(),
+    name: str | None = Forms(None),
+    note: str | None = Forms(None),
+    sess: DatabaseORMSessionAsync = ServerBindInstanceDatabaseSession().file,
+    server: 'Server' = Depends(depend_server)
+) -> 'FileModels':
     """
     Upload file data.
 
@@ -498,7 +448,56 @@ async def depend_file(
 
     return model_info, model_data
 
-Bind.server = Bind.Depend(depend_server)
-Bind.token = Bind.Depend(depend_token)
-Bind.user = Bind.Depend(depend_user)
-Bind.file = Bind.Depend(depend_file)
+class ServerBind(ServerBase, metaclass=StaticMeta):
+    """
+    Server API bind parameter type.
+    """
+
+    Request = Request
+    'Reqeust instance dependency type.'
+    Path = Path
+    'URL source path dependency type.'
+    Query = Query
+    'URL query parameter dependency type.'
+    Header = Header
+    'Request header parameter dependency type.'
+    Cookie = Cookie
+    'Request header cookie parameter dependency type.'
+    Body = Body
+    'Request body JSON parameter dependency type.'
+    Form = Form
+    'Request body form parameter dependency type.'
+    Forms = Forms
+    'Request body multiple forms parameter dependency type.'
+    UploadFile = UploadFile
+    'Type hints upload file type.'
+    Depend = Depends
+    'Dependency type.'
+    Email= EmailStr
+    Conn = DatabaseConnectionAsync
+    Sess = DatabaseORMSessionAsync
+    i = ServerBindInstance()
+    'Server API bind parameter build instance.'
+    conn = ServerBindInstanceDatabaseConnection()
+    'Server API bind parameter asynchronous database connection.'
+    sess = ServerBindInstanceDatabaseSession()
+    'Server API bind parameter asynchronous database session.'
+    server: Depend = Depends(depend_server)
+    'Server global instance dependency type.'
+    token: Depend = Depends(depend_token)
+    'Server authentication token dependency type.'
+    user: Depend = Depends(depend_user)
+    'Current session user data dependency type.'
+    file: Depend = Depends(depend_file)
+    'Upload file data dependency type.'
+    User = User
+    if TYPE_CHECKING:
+        Server = Server
+        Token = Token
+        FileModelInfo = DatabaseORMTableInfo
+        FileModelData = DatabaseORMTableData
+        FileModels = FileModels
+    else:
+        Server = Token = FileModelInfo = FileModelData = FileModels = None
+
+Bind = ServerBind
