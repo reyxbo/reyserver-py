@@ -450,6 +450,7 @@ class Server(ServerBase, Singleton):
         Add public API,
         mapping `{public_dir}/index.html` to `GET /`,
         mapping `{public_dir}/{path}` to `GET `/public/{path:path}`.
+        Note: it must be added at the end.
 
         Parameters
         ----------
@@ -460,7 +461,7 @@ class Server(ServerBase, Singleton):
 
         # Add.
         self.api_public_dir = public_dir
-        subapp = StaticFiles(directory=public_dir)
+        subapp = StaticFiles(directory=self.api_public_dir)
         self.mount('/public', subapp)
         self.add_router(router_public, tags=['public'])
 
