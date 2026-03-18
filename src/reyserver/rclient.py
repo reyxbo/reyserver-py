@@ -197,7 +197,7 @@ class ServerClient(ServerBase):
         path: str | None = None
     ) -> bytes | str:
         """
-        Download file.
+        Download file content.
 
         Parameters
         ----------
@@ -214,7 +214,7 @@ class ServerClient(ServerBase):
         """
 
         # Parameter.
-        url = join_url(self.url, self.prefix, 'files', file_id, 'download')
+        url = join_url(self.url, self.prefix, 'files', file_id, 'content')
 
         # Request.
         response = self.request(url, check=True)

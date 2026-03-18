@@ -11,6 +11,7 @@
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
+from reykit.rdata import decode_jwt
 
 from .rbase import exit_api
 from .rbind import Bind
@@ -177,7 +178,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 
 router_file = APIRouter()
 
-@router_file.get('/{file_id}')
+@router_file.get('/{file_id}', dependencies=(Bind.user,))
 @wrap_cache
 async def get_file_info(
     file_id: int = Bind.i.path,
@@ -204,7 +205,7 @@ async def get_file_info(
 
     return model_info
 
-@router_file.post('/')
+@router_file.post('/', dependencies=(Bind.user,))
 async def upload_file(
     file_models: Bind.FileModels = Bind.file
 ) -> Bind.FileModelInfo:
@@ -221,14 +222,14 @@ async def upload_file(
 
     return model_file_info
 
-@router_file.get('/{file_id}/download')
+@router_file.get('/{file_id}/content', dependencies=(Bind.user,))
 async def download_file(
     file_id: int = Bind.i.path,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server
 ) -> FileResponse:
     """
-    Download file.
+    Download file content.
 
     Parameters
     ----------
@@ -264,5 +265,79 @@ async def download_file(
     file_name, file_relpath = result.first()
     file_abspath = file_store.get_abspath(file_relpath)
     response = FileResponse(file_abspath, filename=file_name)
+
+    return response
+
+@router_file.get('/{file_id}/sign')
+async def get_file_sign_url(
+    file_id: int = Bind.i.path,
+    user: Bind.User = Bind.user,
+    server: Bind.Server = Bind.server
+) -> FileResponse:
+    """
+    Get file download URL with sign token.
+
+    Parameters
+    ----------
+    file_id : File ID.
+
+    Returns
+    -------
+    File download URL with sign token.
+    """
+
+    from .rauth import encode_token
+
+    # Check.
+    if not server.is_started_auth:
+        exit_api(404)
+
+    # Token.
+    token = encode_token(
+        'file',
+        server.api_auth_key,
+        server.api_file_download_token_seconds,
+        user.user_id,
+        file_id=file_id
+    )
+
+    # Response.
+    response = f'{server._prefix}/files/signatures/{token}/content'
+
+    return response
+
+@router_file.get('/signatures/{token}/content')
+async def download_sign_file(
+    token: str = Bind.i.path,
+    conn: Bind.Conn = Bind.conn.file,
+    server: Bind.Server = Bind.server
+) -> FileResponse:
+    """
+    Download file content by sign token.
+
+    Parameters
+    ----------
+    token : Sign token.
+
+    Returns
+    -------
+    File data.
+    """
+
+    from .rauth import TokenDataFile
+
+    # Decode.
+    token_data: TokenDataFile | None = decode_jwt(token, server.api_auth_key)
+
+    # Check.
+    if (
+        token_data is None
+        or token_data['type'] != 'file'
+    ):
+        exit_api(403)
+
+    # Download.
+    file_id = token_data['file_id']
+    response = await download_file(file_id, conn, server)
 
     return response

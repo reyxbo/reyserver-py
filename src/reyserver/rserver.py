@@ -51,14 +51,16 @@ class Server(ServerBase, Singleton):
     'Target server URL of redirect all requests.'
     api_auth_key: str
     'Authentication API JWT encryption key.'
-    api_auth_sess_seconds: int
-    'Authentication API session valid seconds.'
+    api_auth_user_token_seconds: int
+    'Authentication API user data token valid seconds.'
     api_auth_init_role_id: int
     'Authentication API create user initial role ID.'
     api_auth_client_email: 'rauth.ServerVerifyEmail'
     'Authentication API client verify email instance.'
     api_auth_client_phone: 'rauth.ServerVerifyPhone'
     'Authentication API cleint verify phone instance.'
+    api_file_download_token_seconds: int
+    'Authentication API file download sign token valid seconds.'
     api_file_store: FileStore
     'File API store instance.'
 
@@ -478,7 +480,7 @@ class Server(ServerBase, Singleton):
         client_phone: 'rauth.ServerVerifyPhone',
         init_role_id: int,
         key: str | None = None,
-        sess_seconds: int = 28800,
+        user_token_seconds: int = 28800,
     ) -> None:
         """
         Add authentication API.
@@ -491,7 +493,7 @@ class Server(ServerBase, Singleton):
         init_role_id : Create user initial role ID.
         key : JWT encryption key.
             - `None`: Random 32 length string.
-        sess_seconds : Session valid seconds.
+        user_token_seconds : User data token valid seconds.'
         """
 
         from .rauth import build_db_auth, router_auth
@@ -514,11 +516,15 @@ class Server(ServerBase, Singleton):
         self.api_auth_client_phone = client_phone
         self.api_auth_init_role_id = init_role_id
         self.api_auth_key = key
-        self.api_auth_sess_seconds = sess_seconds
+        self.api_auth_user_token_seconds = user_token_seconds
         self.add_router(router_auth, prefix=f'{self._prefix}/auth', tags=['auth'])
         self.is_started_auth = True
 
-    def add_api_file(self, file_dir: str = 'file') -> None:
+    def add_api_file(
+        self,
+        file_dir: str = 'file',
+        download_token_seconds: int = 300
+    ) -> None:
         """
         Add file API.
         Note: must include database engine of `file` name.
@@ -526,6 +532,7 @@ class Server(ServerBase, Singleton):
         Parameters
         ----------
         file_dir : File API store directory path.
+        download_token_seconds : File download sign token valid seconds.
         """
 
         from .rfile import build_db_file, router_file
@@ -540,7 +547,8 @@ class Server(ServerBase, Singleton):
         build_db_file(engine)
 
         # Add.
+        self.api_file_download_token_seconds = download_token_seconds
         self.api_file_store = FileStore(file_dir)
-        self.add_router(router_file, prefix=f'{self._prefix}/files', tags=['file'], dependencies=(Bind.token,))
+        self.add_router(router_file, prefix=f'{self._prefix}/files', tags=['file'])
 
 Bind.Server = Server

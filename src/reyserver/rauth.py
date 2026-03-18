@@ -36,6 +36,49 @@ __all__ = (
     'router_auth'
 )
 
+type AuthenticationTokenType = Literal['user', 'file']
+'Authentication token type range.'
+type VerificationCodeScenes = Literal['login', 'signup', 'reset', 'update']
+'Verification code scene range.'
+type Token = str
+'Token string.'
+type UserIDStr = str
+'User ID string.'
+TokenData = TypedDict(
+    'TokenData',
+    {
+        'sub': UserIDStr,
+        'iat': int,
+        'nbf': int,
+        'exp': int,
+        'type': AuthenticationTokenType
+    }
+)
+'Token data.'
+TokenDataUser = TypedDict(
+    'TokenDataUser',
+    {
+        'sub': UserIDStr,
+        'iat': int,
+        'nbf': int,
+        'exp': int,
+        'type': Literal['user'],
+        'perm_apis': list[str]
+    }
+)
+'Token data of user.'
+TokenDataFile = TypedDict(
+    'TokenDataFile',
+    {
+        'sub': UserIDStr,
+        'iat': int,
+        'nbf': int,
+        'exp': int,
+        'type': Literal['file'],
+        'file_id': int
+    }
+)
+'Token data of file.'
 UserData = TypedDict(
     'UserData',
     {
@@ -53,30 +96,14 @@ UserData = TypedDict(
     }
 )
 'User data dictionary.'
-Token = TypedDict(
-    'Token',
+ResponseToken = TypedDict(
+    'ResponseToken',
     {
-        'sub': str,
-        'iat': int,
-        'nbf': int,
-        'exp': int,
-        'user_id': int,
-        'perm_apis': list[str]
-    }
-)
-'Token data dictionary.'
-type TokenStr = str
-'Token string.'
-JSONToken = TypedDict(
-    'JSONToken',
-    {
-        'access_token': TokenStr,
+        'access_token': Token,
         'token_type': Literal['Bearer']
     }
 )
 'JSON dictionary with Token string.'
-type VerificationScenes = Literal['login', 'signup', 'reset', 'update']
-'Verification scene range.'
 
 class DatabaseORMTableUser(rorm.Table):
     """
@@ -442,7 +469,7 @@ class ServerVerifyEmail(ServerBase):
                 conn.execute.update('verify_email', data)
                 return False
 
-    async def async_verify(self, scene: VerificationScenes, email: str, code: str, use: bool = False) -> bool:
+    async def async_verify(self, scene: VerificationCodeScenes, email: str, code: str, use: bool = False) -> bool:
         """
         Asynchronous verify code.
 
@@ -1102,18 +1129,22 @@ async def get_user_data(
     return info
 
 def encode_token(
-    data: UserData,
+    token_type: AuthenticationTokenType,
     key: str,
-    seconds: int
-) -> TokenStr:
+    seconds: int,
+    user_id: int | str,
+    **data: Any
+) -> Token:
     """
     Encode data to token string.
 
     Parameters
     ----------
-    data : User data.
-    key : Authentication API JWT encryption key.
-    seconds: Authentication API session valid seconds.
+    token_type : Token type.
+    key : Authentication JWT encryption key.
+    seconds : Authentication valid seconds.
+    user_id : User ID.
+    data : Token more data.
 
     Returns
     -------
@@ -1122,13 +1153,13 @@ def encode_token(
 
     # Create.
     now_timestamp_s = now('timestamp_s')
-    json: Token = {
-        'sub': str(data['user_id']),
+    json: TokenDataUser = {
+        **data,
+        'sub': str(user_id),
         'iat': now_timestamp_s,
         'nbf': now_timestamp_s,
         'exp': now_timestamp_s + seconds,
-        'user_id': data['user_id'],
-        'perm_apis': data['perm_apis']
+        'type': token_type
     }
     token = encode_jwt(json, key)
 
@@ -1141,7 +1172,7 @@ async def get_token(
     password: str = Bind.i.form,
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
-) -> JSONToken:
+) -> ResponseToken:
     """
     Get token.
 
@@ -1192,9 +1223,11 @@ async def get_token(
 
     # Token.
     token = encode_token(
-        user_data,
+        'user',
         server.api_auth_key,
-        server.api_auth_sess_seconds
+        server.api_auth_user_token_seconds,
+        user_data['user_id'],
+        perm_apis=user_data['perm_apis']
     )
 
     # Response.
@@ -1211,7 +1244,7 @@ async def create_user(
     conn: Bind.Conn = Bind.conn.auth,
     sess: Bind.Sess = Bind.sess.auth,
     server: Bind.Server = Bind.server
-) -> JSONToken:
+) -> ResponseToken:
     """
     Create user.
 
@@ -1271,9 +1304,11 @@ async def create_user(
     # Token.
     user_data: UserData = await get_user_data(conn, user_id, 'user_id')
     token = encode_token(
-        user_data,
+        'user',
         server.api_auth_key,
-        server.api_auth_sess_seconds
+        server.api_auth_user_token_seconds,
+        user_data.user_id,
+        perm_apis=user_data['perm_apis']
     )
 
     # Response.
@@ -1524,7 +1559,7 @@ async def update_user_avatar(
 
 @router_auth.post('/email-codes')
 async def send_email_code(
-    scene: VerificationScenes = Bind.Body(max_length=20),
+    scene: VerificationCodeScenes = Bind.Body(max_length=20),
     email: Bind.Email = Bind.Body(max_length=255),
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
@@ -1552,7 +1587,7 @@ async def send_email_code(
 
 @router_auth.post('/phone-codes')
 async def send_phone_code(
-    scene: VerificationScenes = Bind.Body(max_length=20),
+    scene: VerificationCodeScenes = Bind.Body(max_length=20),
     phone: str = Bind.Body(min_length=11, max_length=11),
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
@@ -1580,7 +1615,7 @@ async def send_phone_code(
 
 @router_auth.post('/email_codes/verify')
 async def verify_email_code(
-    scene: VerificationScenes = Bind.Body(max_length=20),
+    scene: VerificationCodeScenes = Bind.Body(max_length=20),
     email: Bind.Email = Bind.Body(max_length=255),
     code: str = Bind.Body(min_length=4, max_length=8),
     server: Bind.Server = Bind.server
@@ -1609,7 +1644,7 @@ async def verify_email_code(
 
 @router_auth.post('/phone_codes/verify')
 async def verify_phone_code(
-    scene: VerificationScenes = Bind.Body(max_length=20),
+    scene: VerificationCodeScenes = Bind.Body(max_length=20),
     phone: str = Bind.Body(min_length=11, max_length=11),
     code: str = Bind.Body(min_length=4, max_length=8),
     server: Bind.Server = Bind.server

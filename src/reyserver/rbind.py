@@ -8,7 +8,7 @@
 @Explain : Dependency bind methods.
 """
 
-from typing import TypedDict, NotRequired, Literal, overload, TYPE_CHECKING
+from typing import overload, TYPE_CHECKING
 from pydantic import EmailStr
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.params import (
@@ -29,10 +29,10 @@ from reykit.rdata import decode_jwt
 from reykit.ros import get_md5
 from reykit.rre import search_batch
 
-from .rbase import ServerBase, exit_api, depend_pass
+from .rbase import ServerBase, exit_api
 
 if TYPE_CHECKING:
-    from .rauth import Token, TokenStr
+    from .rauth import TokenDataUser, Token
     from .rfile import DatabaseORMTableInfo, DatabaseORMTableData
     from .rserver import Server
     type FileModels = tuple[DatabaseORMTableInfo, DatabaseORMTableData]
@@ -307,20 +307,20 @@ bearer = OAuth2PasswordBearer(
     auto_error=False
 )
 
-async def depend_token(
+async def depend_token_data_user(
     request: Request,
     server: 'Server' = Depends(depend_server),
-    token_str: 'TokenStr | None' = Depends(bearer)
-) -> 'Token':
+    token: 'Token | None' = Depends(bearer)
+) -> 'TokenDataUser':
     """
-    Dependencie function of authentication token.
+    Dependencie function of authentication token user data.
     If the verification fails, then response status code is 401 or 403.
 
     Parameters
     ----------
     request : Request.
     server : Server.
-    token_str : Authentication token string.
+    token : Token string.
 
     Returns
     -------
@@ -336,19 +336,21 @@ async def depend_token(
     api_path = f'{request.method} {request.url.path}'
 
     # Cache.
-    token: Token | None = getattr(request.state, 'token', None)
+    token_data: TokenDataUser | None = getattr(request.state, 'token_data', None)
 
     # Decode.
-    if token is None:
-        token: Token | None = decode_jwt(token_str, key)
-        if token is None:
+    if token_data is None:
+        token_data: TokenDataUser | None = decode_jwt(token, key)
+        if token_data is None:
             exit_api(401)
-        request.state.token = token
+        request.state['token_data'] = token_data
 
     # Authentication.
+    if token_data['type'] != 'user':
+        exit_api(403)
     perm_apis = [
         f'^{pattern}'
-        for pattern in token['perm_apis']
+        for pattern in token_data['perm_apis']
     ]
     result = search_batch(api_path, *perm_apis)
     if result is None:
@@ -361,33 +363,69 @@ class User(ServerBase):
     User data type.
     """
 
-    def __init__(self, token: 'Token') -> None:
+    def __init__(self, token_data: 'TokenDataUser') -> None:
         """
         Build instance attributes.
 
         Parameters
         ----------
-        token : Token data.
+        token_data : Token data.
         """
 
         # Build.
-        self.user_id = token['user_id']
+        self.user_id = int(token_data['sub'])
 
-async def depend_user(token: 'Token' = Depends(depend_token)) -> User:
+async def depend_user(
+    request: Request,
+    server: 'Server' = Depends(depend_server),
+    token: 'Token | None' = Depends(bearer)
+) -> User:
     """
-    Dependencie function of user data.
+    Dependencie function of user data instance.
+    If the verification fails, then response status code is 401 or 403.
 
     Parameters
     ----------
-    token : token data.
+    request : Request.
+    server : Server.
+    token : Token string.
 
     Returns
     -------
     User data.
     """
 
+    # Check.
+    if not server.is_started_auth:
+        return
+
+    # Parameter.
+    key = server.api_auth_key
+    api_path = f'{request.method} {request.url.path}'
+
+    # Cache.
+    token_data: TokenDataUser | None = getattr(request.state, 'token_data', None)
+
+    # Decode.
+    if token_data is None:
+        token_data: TokenDataUser | None = decode_jwt(token, key)
+        if token_data is None:
+            exit_api(401)
+        request.state['token_data'] = token_data
+
+    # Authentication.
+    if token_data['type'] != 'user':
+        exit_api(401)
+    perm_apis = [
+        f'^{pattern}'
+        for pattern in token_data['perm_apis']
+    ]
+    result = search_batch(api_path, *perm_apis)
+    if result is None:
+        exit_api(403)
+
     # Instance.
-    user = User(token)
+    user = User(token_data)
 
     return user
 
@@ -436,6 +474,8 @@ async def depend_file(
             path=file_relpath
         )
         await sess.add(model_data)
+    else:
+        model_data = await sess.get(DatabaseORMTableData, file_md5)
 
     ## Information.
     model_info = DatabaseORMTableInfo(
@@ -486,20 +526,17 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     'Server API bind parameter asynchronous database session.'
     server = Depend(depend_server)
     'Server global instance dependency type.'
-    token = Depend(depend_token)
-    'Server authentication token dependency type.'
     user = Depend(depend_user)
-    'Current session user data dependency type.'
+    'Current session user data instance dependency type.'
     file = Depend(depend_file)
     'Upload file data dependency type.'
     User = User
     if TYPE_CHECKING:
         Server = Server
-        Token = Token
         FileModelInfo = DatabaseORMTableInfo
         FileModelData = DatabaseORMTableData
         FileModels = FileModels
     else:
-        Server = Token = FileModelInfo = FileModelData = FileModels = None
+        Server = FileModelInfo = FileModelData = FileModels = None
 
 Bind = ServerBind
