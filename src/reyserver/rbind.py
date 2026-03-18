@@ -307,57 +307,6 @@ bearer = OAuth2PasswordBearer(
     auto_error=False
 )
 
-async def depend_token_data_user(
-    request: Request,
-    server: 'Server' = Depends(depend_server),
-    token: 'Token | None' = Depends(bearer)
-) -> 'TokenDataUser':
-    """
-    Dependencie function of authentication token user data.
-    If the verification fails, then response status code is 401 or 403.
-
-    Parameters
-    ----------
-    request : Request.
-    server : Server.
-    token : Token string.
-
-    Returns
-    -------
-    Token data dictionary.
-    """
-
-    # Check.
-    if not server.is_started_auth:
-        return
-
-    # Parameter.
-    key = server.api_auth_key
-    api_path = f'{request.method} {request.url.path}'
-
-    # Cache.
-    token_data: TokenDataUser | None = getattr(request.state, 'token_data', None)
-
-    # Decode.
-    if token_data is None:
-        token_data: TokenDataUser | None = decode_jwt(token, key)
-        if token_data is None:
-            exit_api(401)
-        request.state['token_data'] = token_data
-
-    # Authentication.
-    if token_data['type'] != 'user':
-        exit_api(403)
-    perm_apis = [
-        f'^{pattern}'
-        for pattern in token_data['perm_apis']
-    ]
-    result = search_batch(api_path, *perm_apis)
-    if result is None:
-        exit_api(403)
-
-    return token
-
 class User(ServerBase):
     """
     User data type.
@@ -415,7 +364,7 @@ async def depend_user(
 
     # Authentication.
     if token_data['type'] != 'user':
-        exit_api(401)
+        exit_api(403)
     perm_apis = [
         f'^{pattern}'
         for pattern in token_data['perm_apis']
