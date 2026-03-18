@@ -1307,7 +1307,7 @@ async def create_user(
         'user',
         server.api_auth_key,
         server.api_auth_user_token_seconds,
-        user_data.user_id,
+        user_data['user_id'],
         perm_apis=user_data['perm_apis']
     )
 
