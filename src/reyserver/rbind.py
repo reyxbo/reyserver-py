@@ -8,7 +8,7 @@
 @Explain : Dependency bind methods.
 """
 
-from typing import overload, TYPE_CHECKING
+from typing import Literal, overload, TYPE_CHECKING
 from pydantic import EmailStr
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.params import (
@@ -33,9 +33,9 @@ from .rbase import ServerBase, exit_api
 
 if TYPE_CHECKING:
     from .rauth import TokenDataUser, Token
-    from .rfile import ServerORMTableFileInfo, ServerORMTableFileData
+    from .rfile import ServerFileVisibleEnum, ServerORMTableFileData, ServerORMTableFileInfo
     from .rserver import Server
-    type FileModels = tuple[ServerORMTableFileInfo, ServerORMTableFileData]
+    type FileModels = tuple[ServerORMTableFileData, ServerORMTableFileInfo]
 
 __all__ = (
     'ServerBindInstanceDatabaseSuper',
@@ -285,10 +285,6 @@ async def depend_server(request: Request) -> 'Server':
     """
     Dependencie function of now Server instance.
 
-    Parameters
-    ----------
-    request : Request.
-
     Returns
     -------
     Server.
@@ -323,29 +319,28 @@ class User(ServerBase):
 
         # Build.
         self.user_id = int(token_data['sub'])
+        self.is_admin = token_data['is_admin']
 
-async def depend_user(
+async def depend_user_opt(
     request: Request,
     server: 'Server' = Depends(depend_server),
     token: 'Token | None' = Depends(bearer)
-) -> User:
+) -> User | None:
     """
-    Dependencie function of user data instance.
+    Dependencie function of user data instance or null.
+    If the authentication is not enabled, then throw exception.
+    If the no token, then return `None`.
     If the verification fails, then response status code is 401 or 403.
-
-    Parameters
-    ----------
-    request : Request.
-    server : Server.
-    token : Token string.
 
     Returns
     -------
-    User data.
+    User instance or `None`.
     """
 
     # Check.
     if not server.is_started_auth:
+        throw(AssertionError, server.is_started_auth)
+    if token is None:
         return
 
     # Parameter.
@@ -378,26 +373,49 @@ async def depend_user(
 
     return user
 
+async def depend_user(
+    user: User | None = Depends(depend_user_opt)
+) -> User:
+    """
+    Dependencie function of user data instance.
+    If the authentication is not enabled, then throw exception.
+    If the no token, then response status code is 401.
+    If the verification fails, then response status code is 401 or 403.
+
+    Returns
+    -------
+    User instance.
+    """
+
+    # Check.
+    if user is None:
+        exit_api(401)
+
+    return user
+
 async def depend_file(
     file: UploadFile = Forms(),
+    visible: Literal['public', 'internal', 'private'] = Forms(),
     name: str | None = Forms(None),
     note: str | None = Forms(None),
+    user: User = Depends(depend_user),
     sess: DatabaseORMSessionAsync = ServerBindInstanceDatabaseSession().file,
     server: 'Server' = Depends(depend_server)
 ) -> 'FileModels':
     """
-    Upload file data.
+    Dependencie function of upload file data and information.
 
     Parameters
     ----------
     file : File instance.
+    visible : File visible type.
     name : File name.
         - `None`: Use `file.filename`.
     note : File note.
 
     Returns
     -------
-    File information and data.
+    File data and information.
     """
 
     from .rfile import ServerORMTableFileInfo, ServerORMTableFileData
@@ -428,6 +446,8 @@ async def depend_file(
 
     ## Information.
     model_info = ServerORMTableFileInfo(
+        user_id=user.user_id,
+        visible=visible,
         md5=file_md5,
         name=name,
         note=note
@@ -437,7 +457,77 @@ async def depend_file(
     # Get ID.
     await sess.flush()
 
-    return model_info, model_data
+    return model_data, model_info
+
+async def depend_file_data(
+    file = Depends(depend_file)
+) -> 'ServerORMTableFileData':
+    """
+    Dependencie function of upload file data.
+
+    Returns
+    -------
+    File data.
+    """
+
+    # Parameter.
+    file_data, _ = file
+
+    return file_data
+
+async def depend_file_info(
+    file = Depends(depend_file)
+) -> 'ServerORMTableFileInfo':
+    """
+    Dependencie function of upload file information.
+
+    Returns
+    -------
+    File information.
+    """
+
+    # Parameter.
+    _, file_info = file
+
+    return file_info
+
+async def depend_file_check_visible(
+    file_id: int = Path(),
+    user: User | None = Depends(depend_user_opt),
+    conn: DatabaseConnectionAsync = ServerBindInstanceDatabaseConnection().file
+) -> None:
+    """
+    Dependencie function of check file visible and permission, when it fails, then throw exception to exit API.
+
+    Parameters
+    ----------
+    file_id : File ID.
+    """
+
+    # Select.
+    sql = (
+        'SELECT "user_id", "visible"\n'
+        'FROM "info"\n'
+        'WHERE "file_id" = :file_id\n'
+        'LIMIT 1'
+    )
+    result = await conn.execute(sql, file_id=file_id)
+    params = result.to_row()
+
+    # Check.
+    if params is None:
+        exit_api(404)
+    if not (
+        params['visible'] == 'public'
+        or user is not None
+        and (
+            params['visible'] == 'internal'
+            or params['visible'] == 'private'
+            and params['user_id'] == user.user_id
+            or user.is_admin
+        )
+    ):
+        exit_api(403)
 
 class ServerBind(ServerBase, metaclass=StaticMeta):
     """
@@ -475,17 +565,29 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     'Server API bind parameter asynchronous database session.'
     server = Depend(depend_server)
     'Server global instance dependency type.'
+    user_opt = Depend(depend_user_opt)
+    'Optional current session user data instance dependency type.'
     user = Depend(depend_user)
     'Current session user data instance dependency type.'
     file = Depend(depend_file)
+    'Upload file data and information dependency type.'
+    file_data = Depend(depend_file_data)
     'Upload file data dependency type.'
+    file_info = Depend(depend_file_info)
+    'Upload file information dependency type.'
+    file_check_visible = Depend(depend_file_check_visible)
+    'Check file visible and permission dependency type.'
     User = User
+    UserOpt = User | None
     if TYPE_CHECKING:
         Server = Server
         FileModelInfo = ServerORMTableFileInfo
         FileModelData = ServerORMTableFileData
         FileModels = FileModels
     else:
-        Server = FileModelInfo = FileModelData = FileModels = None
+        Server = None
+        FileModelInfo = None
+        FileModelData = None
+        FileModels = None
 
 Bind = ServerBind

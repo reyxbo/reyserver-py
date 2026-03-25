@@ -8,6 +8,7 @@
 @Explain : File methods. Can create database used "self.build_db" function.
 """
 
+from enum import StrEnum
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
@@ -18,6 +19,7 @@ from .rbind import Bind
 from .rcache import wrap_cache
 
 __all__ = (
+    'ServerFileVisibleEnum',
     'ServerORMTableFileData',
     'ServerORMTableFileInfo',
     'ServerORMTableAuthPerm',
@@ -25,23 +27,17 @@ __all__ = (
     'router_file'
 )
 
-from enum import StrEnum
-
-class ServerFileLevelEnum(ServerBase, StrEnum):
+class ServerFileVisibleEnum(ServerBase, StrEnum):
     """
-    WeChat database send status enumeration type.
+    Server file visible enumeration type.
     """
 
-    WAIT = 'wait'
-    'Wait send.'
-    START = 'start'
-    'Send stated.'
-    SUCCESS = 'success'
-    'Send successded.'
-    FAIL = 'fail'
-    'Send failed.'
-    CANCEL = 'cancel'
-    'Send cancelled.'
+    PUBLIC = 'public'
+    'Public file, no login required.'
+    INTERNAL = 'internal'
+    'Internal file, any user can read, administrator can delete.'
+    PRIVATE = 'private'
+    'Private file, file owner user or administrator can read and delete.'
 
 class ServerORMTableFileData(ServerBase, rorm.Table):
     """
@@ -63,10 +59,8 @@ class ServerORMTableFileInfo(ServerBase, rorm.Table):
     __comment__ = 'File information table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
     file_id: int = rorm.Field(key_auto=True, comment='File ID.')
-    level: int = rorm.Field(rorm.ENUM(), field_default=, not_null=True, index_n=True, comment='File owner.')
-    user_id: int = rorm.Field(index_n=True, comment='User ID.')
-    status: int = rorm.Field(rorm.ENUM(WeChatDatabaseSendStatusEnum), field_default=WeChatDatabaseSendStatusEnum.WAIT, not_null=True, comment='Send status.')
-    type: int = rorm.Field(rorm.ENUM(WeChatSendTypeEnum), not_null=True, comment='Message type.')
+    user_id: int = rorm.Field(not_null=True, index_n=True, comment='File owner user ID.')
+    visible: str = rorm.Field(rorm.ENUM(ServerFileVisibleEnum), not_null=True, index_n=True, comment='File visible type.')
     md5: str = rorm.Field(rorm.types.CHAR(32), not_null=True, index_n=True, comment='File MD5.')
     name: str | None = rorm.Field(rorm.types.VARCHAR(260), index_n=True, comment='File name.')
     note: str | None = rorm.Field(rorm.types.VARCHAR(500), comment='File note.')
@@ -201,10 +195,11 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 
 router_file = APIRouter()
 
-@router_file.get('/{file_id}', dependencies=(Bind.user,))
+@router_file.get('/{file_id}')
 @wrap_cache
 async def get_file_info(
     file_id: int = Bind.i.path,
+    user: Bind.UserOpt = Bind.user_opt,
     sess: Bind.Sess = Bind.sess.file
 ) -> ServerORMTableFileInfo:
     """
@@ -225,12 +220,23 @@ async def get_file_info(
     # Check.
     if model_info is None:
         exit_api(404)
+    if not (
+        model_info.visible == 'public'
+        or user is not None
+        and (
+            model_info.visible == 'internal'
+            or model_info.visible == 'private'
+            and model_info.user_id == user.user_id
+            or user.is_admin
+        )
+    ):
+        exit_api(403)
 
     return model_info
 
-@router_file.post('/', dependencies=(Bind.user,))
+@router_file.post('/')
 async def upload_file(
-    file_models: Bind.FileModels = Bind.file
+    model_file_info: Bind.FileModelInfo = Bind.file_info
 ) -> Bind.FileModelInfo:
     """
     Upload file.
@@ -240,14 +246,12 @@ async def upload_file(
     File information.
     """
 
-    # Parameter.
-    model_file_info = file_models[0]
-
     return model_file_info
 
-@router_file.get('/{file_id}/content', dependencies=(Bind.user,))
+@router_file.get('/{file_id}/content')
 async def download_file(
     file_id: int = Bind.i.path,
+    user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server
 ) -> FileResponse:
@@ -268,7 +272,7 @@ async def download_file(
 
     # Search.
     sql = (
-        'SELECT "name", (\n'
+        'SELECT "user_id", "visible", "name", (\n'
         '    SELECT "path"\n'
         '    FROM "data"\n'
         '    WHERE "md5" = "info"."md5"\n'
@@ -279,19 +283,30 @@ async def download_file(
         'LIMIT 1'
     )
     result = await conn.execute(sql, file_id=file_id)
+    params = result.to_row()
 
     # Check.
-    if result.empty:
+    if params is None:
         exit_api(404)
+    if not (
+        params['visible'] == 'public'
+        or user is not None
+        and (
+            params['visible'] == 'internal'
+            or params['visible'] == 'private'
+            and params['user_id'] == user.user_id
+            or user.is_admin
+        )
+    ):
+        exit_api(403)
 
     # Response.
-    file_name, file_relpath = result.first()
-    file_abspath = file_store.get_abspath(file_relpath)
-    response = FileResponse(file_abspath, filename=file_name)
+    file_abspath = file_store.get_abspath(params['path'])
+    response = FileResponse(file_abspath, filename=params['name'])
 
     return response
 
-@router_file.get('/{file_id}/sign')
+@router_file.get('/{file_id}/sign', dependencies=(Bind.file_check_visible,))
 async def get_file_sign_url(
     file_id: int = Bind.i.path,
     user: Bind.User = Bind.user,
@@ -361,6 +376,6 @@ async def download_sign_file(
 
     # Download.
     file_id = token_data['file_id']
-    response = await download_file(file_id, conn, server)
+    response = await download_file(file_id, None, conn, server)
 
     return response

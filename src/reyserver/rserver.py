@@ -45,6 +45,8 @@ class Server(ServerBase, Singleton):
 
     is_started_auth: bool = False
     'Whether start authentication.'
+    is_added_public: bool = False
+    'Whether add public API.'
     api_public_dir: str
     'Public directory.'
     api_redirect_server_url: str
@@ -53,6 +55,8 @@ class Server(ServerBase, Singleton):
     'Authentication API JWT encryption key.'
     api_auth_user_token_seconds: int
     'Authentication API user data token valid seconds.'
+    api_auth_admin_role_name: str
+    'Authentication API administrator role name.'
     api_auth_init_role_id: int
     'Authentication API create user initial role ID.'
     api_auth_client_email: 'rauth.ServerAuthVerifyEmail'
@@ -460,10 +464,12 @@ class Server(ServerBase, Singleton):
         from .rpublic import router_public
 
         # Add.
+        self.is_added_public = True
         self.api_public_dir = public_dir
         subapp = StaticFiles(directory=self.api_public_dir)
         self.mount('/public', subapp)
         self.add_router(router_public, tags=['public'])
+        self.add_router = lambda *_, **__: throw(AssertionError, text='public API must be added at the end')
 
     def add_api_test(self) -> None:
         """
@@ -482,6 +488,7 @@ class Server(ServerBase, Singleton):
         init_role_id: int,
         key: str | None = None,
         user_token_seconds: int = 28800,
+        admin_role_name: str = 'admin'
     ) -> None:
         """
         Add authentication API.
@@ -494,7 +501,8 @@ class Server(ServerBase, Singleton):
         init_role_id : Create user initial role ID.
         key : JWT encryption key.
             - `None`: Random 32 length string.
-        user_token_seconds : User data token valid seconds.'
+        user_token_seconds : User data token valid seconds.
+        admin_role_name : Administrator role name.
         """
 
         from .rauth import build_db_auth, router_auth
@@ -518,6 +526,7 @@ class Server(ServerBase, Singleton):
         self.api_auth_init_role_id = init_role_id
         self.api_auth_key = key
         self.api_auth_user_token_seconds = user_token_seconds
+        self.api_auth_admin_role_name = admin_role_name
         self.add_router(router_auth, prefix=f'{self._prefix}/auth', tags=['auth'])
         self.is_started_auth = True
 

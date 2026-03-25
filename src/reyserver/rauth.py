@@ -63,7 +63,8 @@ TokenDataUser = TypedDict(
         'nbf': int,
         'exp': int,
         'type': Literal['user'],
-        'perm_apis': list[str]
+        'perm_apis': list[str],
+        'is_admin': bool
     }
 )
 'Token data of user.'
@@ -1222,12 +1223,14 @@ async def create_token(
             exit_api(401)
 
     # Token.
+    is_admin = server.api_auth_admin_role_name in user_data['role_names']
     token = encode_token(
         'user',
         server.api_auth_key,
         server.api_auth_user_token_seconds,
         user_data['user_id'],
-        perm_apis=user_data['perm_apis']
+        perm_apis=user_data['perm_apis'],
+        is_admin=is_admin
     )
 
     # Response.
@@ -1303,12 +1306,14 @@ async def create_user(
 
     # Token.
     user_data: UserData = await get_user_data(conn, user_id, 'user_id')
+    is_admin = server.api_auth_admin_role_name in user_data['role_names']
     token = encode_token(
         'user',
         server.api_auth_key,
         server.api_auth_user_token_seconds,
         user_data['user_id'],
-        perm_apis=user_data['perm_apis']
+        perm_apis=user_data['perm_apis'],
+        is_admin=is_admin
     )
 
     # Response.
@@ -1534,7 +1539,7 @@ async def update_user_phone(
 
 @router_auth.patch('/user/avatar')
 async def update_user_avatar(
-    file_models: Bind.FileModels = Bind.file,
+    model_file_info: Bind.FileModelInfo = Bind.file_info,
     user: Bind.User = Bind.user,
     sess: Bind.Sess = Bind.sess.auth
 ) -> int:
@@ -1547,7 +1552,6 @@ async def update_user_avatar(
     """
 
     # Parameter.
-    model_file_info = file_models[0]
     file_id = model_file_info.file_id
 
     # Update.
