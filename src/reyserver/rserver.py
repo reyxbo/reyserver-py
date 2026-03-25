@@ -55,9 +55,9 @@ class Server(ServerBase, Singleton):
     'Authentication API user data token valid seconds.'
     api_auth_init_role_id: int
     'Authentication API create user initial role ID.'
-    api_auth_client_email: 'rauth.ServerVerifyEmail'
+    api_auth_client_email: 'rauth.ServerAuthVerifyEmail'
     'Authentication API client verify email instance.'
-    api_auth_client_phone: 'rauth.ServerVerifyPhone'
+    api_auth_client_phone: 'rauth.ServerAuthVerifyPhone'
     'Authentication API cleint verify phone instance.'
     api_file_download_token_seconds: int
     'Authentication API file download sign token valid seconds.'
@@ -477,8 +477,8 @@ class Server(ServerBase, Singleton):
 
     def add_api_auth(
         self,
-        client_email: 'rauth.ServerVerifyEmail',
-        client_phone: 'rauth.ServerVerifyPhone',
+        client_email: 'rauth.ServerAuthVerifyEmail',
+        client_phone: 'rauth.ServerAuthVerifyPhone',
         init_role_id: int,
         key: str | None = None,
         user_token_seconds: int = 28800,

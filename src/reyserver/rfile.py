@@ -13,33 +13,39 @@ from fastapi.responses import FileResponse
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rdata import decode_jwt
 
-from .rbase import exit_api
+from .rbase import ServerBase, exit_api
 from .rbind import Bind
 from .rcache import wrap_cache
 
 __all__ = (
-    'DatabaseORMTableInfo',
-    'DatabaseORMTableData',
+    'ServerORMTableFileData',
+    'ServerORMTableFileInfo',
+    'ServerORMTableAuthPerm',
     'build_db_file',
     'router_file'
 )
 
-class DatabaseORMTableInfo(rorm.Table):
+from enum import StrEnum
+
+class ServerFileLevelEnum(ServerBase, StrEnum):
     """
-    Database "info" table ORM model.
+    WeChat database send status enumeration type.
     """
 
-    __name__ = 'info'
-    __comment__ = 'File information table.'
-    create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
-    file_id: int = rorm.Field(key_auto=True, comment='File ID.')
-    md5: str = rorm.Field(rorm.types.CHAR(32), not_null=True, index_n=True, comment='File MD5.')
-    name: str | None = rorm.Field(rorm.types.VARCHAR(260), index_n=True, comment='File name.')
-    note: str | None = rorm.Field(rorm.types.VARCHAR(500), comment='File note.')
+    WAIT = 'wait'
+    'Wait send.'
+    START = 'start'
+    'Send stated.'
+    SUCCESS = 'success'
+    'Send successded.'
+    FAIL = 'fail'
+    'Send failed.'
+    CANCEL = 'cancel'
+    'Send cancelled.'
 
-class DatabaseORMTableData(rorm.Table):
+class ServerORMTableFileData(ServerBase, rorm.Table):
     """
-    Database "data" table ORM model.
+    Server file `data` table ORM model.
     """
 
     __name__ = 'data'
@@ -47,6 +53,23 @@ class DatabaseORMTableData(rorm.Table):
     md5: str = rorm.Field(rorm.types.CHAR(32), key=True, comment='File MD5.')
     size: int = rorm.Field(not_null=True, comment='File bytes size.')
     path: str = rorm.Field(rorm.types.VARCHAR(4095), not_null=True, comment='File disk storage relative path.')
+
+class ServerORMTableFileInfo(ServerBase, rorm.Table):
+    """
+    Server file `info` table ORM model.
+    """
+
+    __name__ = 'info'
+    __comment__ = 'File information table.'
+    create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
+    file_id: int = rorm.Field(key_auto=True, comment='File ID.')
+    level: int = rorm.Field(rorm.ENUM(), field_default=, not_null=True, index_n=True, comment='File owner.')
+    user_id: int = rorm.Field(index_n=True, comment='User ID.')
+    status: int = rorm.Field(rorm.ENUM(WeChatDatabaseSendStatusEnum), field_default=WeChatDatabaseSendStatusEnum.WAIT, not_null=True, comment='Send status.')
+    type: int = rorm.Field(rorm.ENUM(WeChatSendTypeEnum), not_null=True, comment='Message type.')
+    md5: str = rorm.Field(rorm.types.CHAR(32), not_null=True, index_n=True, comment='File MD5.')
+    name: str | None = rorm.Field(rorm.types.VARCHAR(260), index_n=True, comment='File name.')
+    note: str | None = rorm.Field(rorm.types.VARCHAR(500), comment='File note.')
 
 def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
@@ -60,7 +83,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     # Set parameter.
 
     ## Table.
-    tables = [DatabaseORMTableInfo, DatabaseORMTableData]
+    tables = [ServerORMTableFileInfo, ServerORMTableFileData]
 
     ## View.
     views = [
@@ -183,7 +206,7 @@ router_file = APIRouter()
 async def get_file_info(
     file_id: int = Bind.i.path,
     sess: Bind.Sess = Bind.sess.file
-) -> DatabaseORMTableInfo:
+) -> ServerORMTableFileInfo:
     """
     Get file information.
 
@@ -197,7 +220,7 @@ async def get_file_info(
     """
 
     # Get.
-    model_info = await sess.get(DatabaseORMTableInfo, file_id)
+    model_info = await sess.get(ServerORMTableFileInfo, file_id)
 
     # Check.
     if model_info is None:

@@ -24,14 +24,14 @@ from .rbase import ServerBase, exit_api
 from .rbind import Bind
 
 __all__ = (
-    'DatabaseORMTableUser',
-    'DatabaseORMTableRole',
-    'DatabaseORMTablePerm',
-    'DatabaseORMTableUserRole',
-    'DatabaseORMTableRolePerm',
-    'DatabaseORMTableVerifyEmail',
-    'DatabaseORMModelUserOut',
-    'ServerVerifyEmail',
+    'ServerORMAuthTableUser',
+    'ServerORMTableAuthRole',
+    'ServerORMTableAuthPerm',
+    'ServerORMAuthTableAuthUserRole',
+    'ServerORMTableAuthRolePerm',
+    'ServerORMTableAuthVerifyEmail',
+    'ServerORMModelAuthUserOut',
+    'ServerAuthVerifyEmail',
     'build_db_auth',
     'router_auth'
 )
@@ -105,9 +105,9 @@ ResponseToken = TypedDict(
 )
 'JSON dictionary with Token string.'
 
-class DatabaseORMTableUser(rorm.Table):
+class ServerORMAuthTableUser(ServerBase, rorm.Table):
     """
-    Database "user" table ORM model.
+    Server authentication `user` table ORM model.
     """
 
     __name__ = 'user'
@@ -135,9 +135,9 @@ class DatabaseORMTableUser(rorm.Table):
             throw(ValueError, text='must not be contain consecutive characters "-_"')
         return name
 
-class DatabaseORMTableRole(rorm.Table):
+class ServerORMTableAuthRole(ServerBase, rorm.Table):
     """
-    Database "role" table ORM model.
+    Server authentication `role` table ORM model.
     """
 
     __name__ = 'role'
@@ -149,9 +149,9 @@ class DatabaseORMTableRole(rorm.Table):
     desc: str | None = rorm.Field(rorm.types.VARCHAR(500), comment='Role description.')
     is_valid: bool = rorm.Field(field_default='TRUE', not_null=True, comment='Is the valid.')
 
-class DatabaseORMTablePerm(rorm.Table):
+class ServerORMTableAuthPerm(ServerBase, rorm.Table):
     """
-    Database "perm" table ORM model.
+    Server authentication `perm` table ORM model.
     """
 
     __name__ = 'perm'
@@ -167,9 +167,9 @@ class DatabaseORMTablePerm(rorm.Table):
     )
     is_valid: bool = rorm.Field(field_default='TRUE', not_null=True, comment='Is the valid.')
 
-class DatabaseORMTableUserRole(rorm.Table):
+class ServerORMAuthTableAuthUserRole(ServerBase, rorm.Table):
     """
-    Database "user_role" table ORM model.
+    Server authentication `user_role` table ORM model.
     """
 
     __name__ = 'user_role'
@@ -179,9 +179,9 @@ class DatabaseORMTableUserRole(rorm.Table):
     user_id: int = rorm.Field(key=True, comment='User ID.')
     role_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Role ID.')
 
-class DatabaseORMTableRolePerm(rorm.Table):
+class ServerORMTableAuthRolePerm(ServerBase, rorm.Table):
     """
-    Database "role_perm" table ORM model.
+    Server authentication `role_perm` table ORM model.
     """
 
     __name__ = 'role_perm'
@@ -191,9 +191,9 @@ class DatabaseORMTableRolePerm(rorm.Table):
     role_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Role ID.')
     perm_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Permission ID.')
 
-class DatabaseORMTableVerifyEmail(rorm.Table):
+class ServerORMTableAuthVerifyEmail(ServerBase, rorm.Table):
     """
-    Database `verify_email` table ORM model.
+    Server authentication `verify_email` table ORM model.
     """
 
     __name__ = 'verify_email'
@@ -208,9 +208,9 @@ class DatabaseORMTableVerifyEmail(rorm.Table):
     verify_count: int = rorm.Field(rorm.types.SMALLINT, field_default='0', not_null=True, comment='Verify count.')
     used: bool = rorm.Field(field_default='FALSE', not_null=True, comment='Is the used.')
 
-class DatabaseORMTableVerifyPhone(rorm.Table):
+class ServerORMTableAuthVerifyPhone(ServerBase, rorm.Table):
     """
-    Database `verify_phone` table ORM model.
+    Server authentication `verify_phone` table ORM model.
     """
 
     __name__ = 'verify_phone'
@@ -225,9 +225,9 @@ class DatabaseORMTableVerifyPhone(rorm.Table):
     verify_count: int = rorm.Field(rorm.types.SMALLINT, field_default='0', not_null=True, comment='Verify count.')
     used: bool = rorm.Field(field_default='FALSE', not_null=True, comment='Is the used.')
 
-class DatabaseORMModelUserInput(rorm.Model):
+class ServerORMModelAuthUserInput(ServerBase, rorm.Model):
     """
-    Database input user ORM model.
+    Server authentication input user ORM model.
     """
 
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, comment=f'User name.', len_min=3)
@@ -250,9 +250,9 @@ class DatabaseORMModelUserInput(rorm.Model):
             throw(ValueError, text='must not be contain consecutive characters "-_"')
         return name
 
-class DatabaseORMModelUserOut(rorm.Model):
+class ServerORMModelAuthUserOut(ServerBase, rorm.Model):
     """
-    Database out user ORM model.
+    Server authentication out user ORM model.
     """
 
     create_time: rorm.Datetime | None = rorm.Field(comment='Record create time.')
@@ -263,9 +263,9 @@ class DatabaseORMModelUserOut(rorm.Model):
     phone: str | None = rorm.Field(rorm.types.CHAR(11), comment=f'User phone.', re=PATTERN_PHONE)
     avatar: int | None = rorm.Field(comment='User avatar file ID.')
 
-class ServerVerifyEmail(ServerBase):
+class ServerAuthVerifyEmail(ServerBase):
     """
-    Server verify email type.
+    Server authentication verify email type.
     Can create database used "self.build_db" method.
     """
 
@@ -538,7 +538,7 @@ class ServerVerifyEmail(ServerBase):
         # Parameter.
 
         ## Table.
-        tables = [DatabaseORMTableVerifyEmail]
+        tables = [ServerORMTableAuthVerifyEmail]
 
         ## View stats.
         views_stats = [
@@ -587,9 +587,9 @@ class ServerVerifyEmail(ServerBase):
         # Build.
         self.db_engine.sync_engine.build(tables=tables, views_stats=views_stats, skip=True)
 
-class ServerVerifyPhone(ServerBase):
+class ServerAuthVerifyPhone(ServerBase):
     """
-    Server verify phone type.
+    Server authentication verify phone type.
     Can create database used "self.build_db" method.
     """
 
@@ -847,7 +847,7 @@ class ServerVerifyPhone(ServerBase):
         # Parameter.
 
         ## Table.
-        tables = [DatabaseORMTableVerifyPhone]
+        tables = [ServerORMTableAuthVerifyPhone]
 
         ## View stats.
         views_stats = [
@@ -909,11 +909,11 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 
     ## Table.
     tables = [
-        DatabaseORMTableUser,
-        DatabaseORMTableRole,
-        DatabaseORMTablePerm,
-        DatabaseORMTableUserRole,
-        DatabaseORMTableRolePerm
+        ServerORMAuthTableUser,
+        ServerORMTableAuthRole,
+        ServerORMTableAuthPerm,
+        ServerORMAuthTableAuthUserRole,
+        ServerORMTableAuthRolePerm
     ]
 
     ## View stats.
@@ -1240,7 +1240,7 @@ async def create_token(
 
 @router_auth.post('/users')
 async def create_user(
-    model_user: DatabaseORMModelUserInput,
+    model_user: ServerORMModelAuthUserInput,
     conn: Bind.Conn = Bind.conn.auth,
     sess: Bind.Sess = Bind.sess.auth,
     server: Bind.Server = Bind.server
@@ -1290,10 +1290,10 @@ async def create_user(
 
     # Signup.
     update = {'password': hash_bcrypt(model_user.password).decode()}
-    table_user = DatabaseORMTableUser.model_validate(model_user, update=update)
+    table_user = ServerORMAuthTableUser.model_validate(model_user, update=update)
     await sess.add(table_user)
     await sess.flush()
-    user_role = DatabaseORMTableUserRole(
+    user_role = ServerORMAuthTableAuthUserRole(
         user_id=table_user.user_id,
         role_id=init_role_id
     )
@@ -1366,7 +1366,7 @@ async def reset_password(
     # Update.
     new_password_hash = hash_bcrypt(new_password).decode()
     sql_where = f'"user_id" = {user_data['user_id']}'
-    await sess.update(DatabaseORMTableUser).values(password=new_password_hash).where(sql_where).execute()
+    await sess.update(ServerORMAuthTableUser).values(password=new_password_hash).where(sql_where).execute()
 
 @router_auth.get('/users/exists')
 async def check_user_exists(
@@ -1414,7 +1414,7 @@ async def check_user_exists(
 async def get_user_info(
     user: Bind.User = Bind.user,
     sess: Bind.Sess = Bind.sess.auth
-) -> DatabaseORMModelUserOut:
+) -> ServerORMModelAuthUserOut:
     """
     Get user information.
 
@@ -1424,8 +1424,8 @@ async def get_user_info(
     """
 
     # Get.
-    user = await sess.get(DatabaseORMTableUser, user.user_id)
-    user_out = DatabaseORMModelUserOut.model_validate(user)
+    user = await sess.get(ServerORMAuthTableUser, user.user_id)
+    user_out = ServerORMModelAuthUserOut.model_validate(user)
 
     return user_out
 
@@ -1445,7 +1445,7 @@ async def update_user_name(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    await sess.update(DatabaseORMTableUser).values(name=name).where(sql_where).execute()
+    await sess.update(ServerORMAuthTableUser).values(name=name).where(sql_where).execute()
 
 @router_auth.patch('/user/password')
 async def update_user_password(
@@ -1472,7 +1472,7 @@ async def update_user_password(
     # Update.
     new_password_hash = hash_bcrypt(new_password).decode()
     sql_where = f'"user_id" = {user.user_id}'
-    await sess.update(DatabaseORMTableUser).values(password=new_password_hash).where(sql_where).execute()
+    await sess.update(ServerORMAuthTableUser).values(password=new_password_hash).where(sql_where).execute()
 
 @router_auth.patch('/user/email')
 async def update_user_email(
@@ -1501,7 +1501,7 @@ async def update_user_email(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    await sess.update(DatabaseORMTableUser).values(email=new_email).where(sql_where).execute()
+    await sess.update(ServerORMAuthTableUser).values(email=new_email).where(sql_where).execute()
 
 @router_auth.patch('/user/phone')
 async def update_user_phone(
@@ -1530,7 +1530,7 @@ async def update_user_phone(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    await sess.update(DatabaseORMTableUser).values(phone=new_phone).where(sql_where).execute()
+    await sess.update(ServerORMAuthTableUser).values(phone=new_phone).where(sql_where).execute()
 
 @router_auth.patch('/user/avatar')
 async def update_user_avatar(
@@ -1552,7 +1552,7 @@ async def update_user_avatar(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    await sess.update(DatabaseORMTableUser).values(avatar=file_id).where(sql_where).execute()
+    await sess.update(ServerORMAuthTableUser).values(avatar=file_id).where(sql_where).execute()
     await sess.commit()
 
     return file_id

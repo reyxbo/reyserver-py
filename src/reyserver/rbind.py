@@ -33,9 +33,9 @@ from .rbase import ServerBase, exit_api
 
 if TYPE_CHECKING:
     from .rauth import TokenDataUser, Token
-    from .rfile import DatabaseORMTableInfo, DatabaseORMTableData
+    from .rfile import ServerORMTableFileInfo, ServerORMTableFileData
     from .rserver import Server
-    type FileModels = tuple[DatabaseORMTableInfo, DatabaseORMTableData]
+    type FileModels = tuple[ServerORMTableFileInfo, ServerORMTableFileData]
 
 __all__ = (
     'ServerBindInstanceDatabaseSuper',
@@ -400,7 +400,7 @@ async def depend_file(
     File information and data.
     """
 
-    from .rfile import DatabaseORMTableInfo, DatabaseORMTableData
+    from .rfile import ServerORMTableFileInfo, ServerORMTableFileData
 
     # Parameter.
     file_store = server.api_file_store
@@ -417,17 +417,17 @@ async def depend_file(
     if file_path is None:
         file_path = file_store.store(file_bytes)
         file_relpath = file_store.get_relpath(file_path)
-        model_data = DatabaseORMTableData(
+        model_data = ServerORMTableFileData(
             md5=file_md5,
             size=file_size,
             path=file_relpath
         )
         await sess.add(model_data)
     else:
-        model_data = await sess.get(DatabaseORMTableData, file_md5)
+        model_data = await sess.get(ServerORMTableFileData, file_md5)
 
     ## Information.
-    model_info = DatabaseORMTableInfo(
+    model_info = ServerORMTableFileInfo(
         md5=file_md5,
         name=name,
         note=note
@@ -482,8 +482,8 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     User = User
     if TYPE_CHECKING:
         Server = Server
-        FileModelInfo = DatabaseORMTableInfo
-        FileModelData = DatabaseORMTableData
+        FileModelInfo = ServerORMTableFileInfo
+        FileModelData = ServerORMTableFileData
         FileModels = FileModels
     else:
         Server = FileModelInfo = FileModelData = FileModels = None
