@@ -8,11 +8,12 @@
 @Explain : Base methods.
 """
 
-from typing import NoReturn
+from typing import NoReturn, Generic
 from http import HTTPStatus
 from fastapi import HTTPException
 from fastapi.params import Depends
-from reykit.rbase import Base, Exit, throw
+from reykit.rbase import T, Base, Exit, throw
+from reydb import rorm
 
 __all__ = (
     'ServerBase',
@@ -36,6 +37,20 @@ class ServerExitAPI(ServerExit, HTTPException):
     """
     Server exit API type.
     """
+
+class Page(ServerBase, rorm.Model, Generic[T]):
+    """
+    Response of one page data.
+    """
+
+    offset: int = rorm.Field(num_ge=0)
+    "Start offset count."
+    limit: int = rorm.Field(num_ge=0)
+    "End limit count."
+    data: list[T]
+    "Data table."
+    total: int | None
+    "Row total count."
 
 def exit_api(code: int = 400, text: str | None = None) -> NoReturn:
     """

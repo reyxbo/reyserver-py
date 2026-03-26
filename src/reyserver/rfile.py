@@ -61,7 +61,8 @@ class ServerORMTableFileInfo(ServerBase, rorm.Table):
     file_id: int = rorm.Field(key_auto=True, comment='File ID.')
     user_id: int = rorm.Field(not_null=True, index_n=True, comment='File owner user ID.')
     visible: str = rorm.Field(rorm.ENUM(ServerFileVisibleEnum), not_null=True, index_n=True, comment='File visible type.')
-    md5: str = rorm.Field(rorm.types.CHAR(32), not_null=True, index_n=True, comment='File MD5.')
+    md5: str = rorm.Field(rorm.types.CHAR(32), key_foreign=(ServerORMTableFileData.__tablename__, 'md5'), not_null=True, index_n=True, comment='File MD5.')
+    size: int = rorm.Field(not_null=True, comment='File bytes size.')
     name: str | None = rorm.Field(rorm.types.VARCHAR(260), index_n=True, comment='File name.')
     note: str | None = rorm.Field(rorm.types.VARCHAR(500), comment='File note.')
 
@@ -77,7 +78,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     # Set parameter.
 
     ## Table.
-    tables = [ServerORMTableFileInfo, ServerORMTableFileData]
+    tables = [ServerORMTableFileData, ServerORMTableFileInfo]
 
     ## View.
     views = [
@@ -195,9 +196,57 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 
 router_file = APIRouter()
 
+@router_file.get('/')
+async def get_files(
+    page_params: Bind.PageParams = Bind.page,
+    user: Bind.UserOpt = Bind.user_opt,
+    conn: Bind.Conn = Bind.conn.file,
+    sess: Bind.Sess = Bind.sess.file
+) -> Bind.Page[ServerORMTableFileInfo]:
+    """
+    Get file information table.
+
+    Returns
+    -------
+    Page data of file information table.
+    """
+
+    # Parameter.
+    if user is None:
+        where = '"visible" = \'public\''
+    elif user.is_admin:
+        where = 'TRUE'
+    else:
+        where = f'"visible" != \'private\' OR "user_id" = {user.user_id}'
+
+    # Get.
+    models_file_info = await (
+        sess.select(ServerORMTableFileInfo)
+        .offset(page_params['offset'])
+        .limit(page_params['limit'])
+        .where(where)
+        .execute()
+    )
+
+    # Total.
+    if page_params['with_total']:
+        total = await conn.execute.count(ServerORMTableFileInfo)
+    else:
+        total = None
+
+    # Response.
+    page = Bind.Page(
+        offset=page_params['offset'],
+        limit=page_params['limit'],
+        data=models_file_info,
+        total=total
+    )
+
+    return page
+
 @router_file.get('/{file_id}')
 @wrap_cache
-async def get_file_info(
+async def get_file(
     file_id: int = Bind.i.path,
     user: Bind.UserOpt = Bind.user_opt,
     sess: Bind.Sess = Bind.sess.file
@@ -235,11 +284,11 @@ async def get_file_info(
     return model_info
 
 @router_file.post('/')
-async def upload_file(
-    model_file_info: Bind.FileModelInfo = Bind.file_info
-) -> Bind.FileModelInfo:
+async def create_file(
+    model_file_info: ServerORMTableFileInfo = Bind.file_info
+) -> ServerORMTableFileInfo:
     """
-    Upload file.
+    Create file.
 
     Returns
     -------
@@ -248,15 +297,49 @@ async def upload_file(
 
     return model_file_info
 
+@router_file.delete('/{file_id}', dependencies=(Bind.file_check_delete,))
+async def delete_file(
+    file_id: int = Bind.i.path,
+    sess: Bind.Sess = Bind.sess.file,
+    server: Bind.Server = Bind.server
+) -> None:
+    """
+    Delete file information and data.
+
+    Parameters
+    ----------
+    file_id : File ID.
+    """
+
+    # Delete.
+
+    ## Information.
+    sql_where = f'"file_id" = {file_id}'
+    model_file_info, = await sess.delete(ServerORMTableFileInfo).where(sql_where).execute_return()
+
+    ## Data.
+    sql_where = (
+        f'"md5" = \'{model_file_info.md5}\'\n'
+        '    AND NOT EXISTS (\n'
+        '        SELECT TRUE\n'
+        f'        FROM "{ServerORMTableFileInfo.__tablename__}"\n'
+        f'        WHERE "md5" = \'{model_file_info.md5}\'\n'
+        ')'
+    )
+    await sess.delete(ServerORMTableFileData).where(sql_where).execute()
+
+    ## Storge.
+    server.api_file_store.delete(model_file_info.md5)
+
 @router_file.get('/{file_id}/content')
-async def download_file(
+async def get_file_conetnt(
     file_id: int = Bind.i.path,
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server
 ) -> FileResponse:
     """
-    Download file content.
+    Get file bytes content.
 
     Parameters
     ----------
@@ -306,14 +389,14 @@ async def download_file(
 
     return response
 
-@router_file.get('/{file_id}/sign', dependencies=(Bind.file_check_visible,))
+@router_file.get('/{file_id}/sign', dependencies=(Bind.file_check_read,))
 async def get_file_sign_url(
     file_id: int = Bind.i.path,
     user: Bind.User = Bind.user,
     server: Bind.Server = Bind.server
 ) -> FileResponse:
     """
-    Get file download URL with sign token.
+    Get file URL with sign token.
 
     Parameters
     ----------
@@ -341,13 +424,13 @@ async def get_file_sign_url(
     return response
 
 @router_file.get('/signatures/{token}/content')
-async def download_sign_file(
+async def get_sign_file_content(
     token: str = Bind.i.path,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server
 ) -> FileResponse:
     """
-    Download file content by sign token.
+    Get file bytes content by sign token.
 
     Parameters
     ----------
@@ -376,6 +459,6 @@ async def download_sign_file(
 
     # Download.
     file_id = token_data['file_id']
-    response = await download_file(file_id, None, conn, server)
+    response = await get_file_conetnt(file_id, None, conn, server)
 
     return response

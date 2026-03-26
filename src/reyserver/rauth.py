@@ -257,7 +257,7 @@ class ServerORMModelAuthUserOut(ServerBase, rorm.Model):
     """
 
     create_time: rorm.Datetime | None = rorm.Field(comment='Record create time.')
-    update_time: rorm.Datetime | None = rorm.Field( comment='Record update time.')
+    update_time: rorm.Datetime | None = rorm.Field(comment='Record update time.')
     user_id: int | None = rorm.Field(comment='User ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, comment=f'User name.', len_min=3)
     email: rorm.Email | None = rorm.Field(comment='User email.')

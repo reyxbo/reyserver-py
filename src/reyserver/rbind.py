@@ -8,7 +8,7 @@
 @Explain : Dependency bind methods.
 """
 
-from typing import Literal, overload, TYPE_CHECKING
+from typing import TypedDict, Literal, overload, TYPE_CHECKING
 from pydantic import EmailStr
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.params import (
@@ -29,11 +29,11 @@ from reykit.rdata import decode_jwt
 from reykit.ros import get_md5
 from reykit.rre import search_batch
 
-from .rbase import ServerBase, exit_api
+from .rbase import ServerBase, Page, exit_api
 
 if TYPE_CHECKING:
     from .rauth import TokenDataUser, Token
-    from .rfile import ServerFileVisibleEnum, ServerORMTableFileData, ServerORMTableFileInfo
+    from .rfile import ServerORMTableFileData, ServerORMTableFileInfo
     from .rserver import Server
     type FileModels = tuple[ServerORMTableFileData, ServerORMTableFileInfo]
 
@@ -45,6 +45,8 @@ __all__ = (
     'ServerBind',
     'Bind'
 )
+
+PageParams = TypedDict('PageParams', {'offset': int, 'limit': int, 'with_total': bool})
 
 class ServerBindInstanceDatabaseSuper(ServerBase):
     """
@@ -449,6 +451,7 @@ async def depend_file(
         user_id=user.user_id,
         visible=visible,
         md5=file_md5,
+        size=file_size,
         name=name,
         note=note
     )
@@ -491,13 +494,41 @@ async def depend_file_info(
 
     return file_info
 
-async def depend_file_check_visible(
+async def depend_page(
+    offset: int = Query(0),
+    limit: int = Query(100),
+    with_total: bool = Query(False)
+) -> PageParams:
+    """
+    Dependencie function of pagination parameters.
+
+    Parameters
+    ----------
+    offset : Start offset count.
+    limit : End limit count.
+    with_total : Whether to need return total count.
+
+    Returns
+    -------
+    Pagination parameters.
+    """
+
+    # Parameter.
+    page_params = {
+        'offset': offset,
+        'limit': limit,
+        'with_total': with_total
+    }
+
+    return page_params
+
+async def depend_file_check_read(
     file_id: int = Path(),
     user: User | None = Depends(depend_user_opt),
     conn: DatabaseConnectionAsync = ServerBindInstanceDatabaseConnection().file
 ) -> None:
     """
-    Dependencie function of check file visible and permission, when it fails, then throw exception to exit API.
+    Dependencie function of check file read permission, when it fails, then throw exception to exit API.
 
     Parameters
     ----------
@@ -526,6 +557,39 @@ async def depend_file_check_visible(
             and params['user_id'] == user.user_id
             or user.is_admin
         )
+    ):
+        exit_api(403)
+
+async def depend_file_check_delete(
+    file_id: int = Path(),
+    user: User = Depends(depend_user),
+    conn: DatabaseConnectionAsync = ServerBindInstanceDatabaseConnection().file
+) -> None:
+    """
+    Dependencie function of check file delete permission, when it fails, then throw exception to exit API.
+
+    Parameters
+    ----------
+    file_id : File ID.
+    """
+
+    # Select.
+    sql = (
+        'SELECT "user_id", "visible"\n'
+        'FROM "info"\n'
+        'WHERE "file_id" = :file_id\n'
+        'LIMIT 1'
+    )
+    result = await conn.execute(sql, file_id=file_id)
+    params = result.to_row()
+
+    # Check.
+    if params is None:
+        exit_api(404)
+    if not (
+        params['visible'] == 'private'
+        and params['user_id'] == user.user_id
+        or user.is_admin
     ):
         exit_api(403)
 
@@ -575,10 +639,16 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     'Upload file data dependency type.'
     file_info = Depend(depend_file_info)
     'Upload file information dependency type.'
-    file_check_visible = Depend(depend_file_check_visible)
-    'Check file visible and permission dependency type.'
+    file_check_read = Depend(depend_file_check_read)
+    'Check file read permission dependency type.'
+    file_check_delete = Depend(depend_file_check_delete)
+    'Check file delete permission dependency type.'
+    page = Depend(depend_page)
+    'Pagination parameters.'
+    PageParams = PageParams
+    Page = Page
     User = User
-    UserOpt = User | None
+    type UserOpt = User | None
     if TYPE_CHECKING:
         Server = Server
         FileModelInfo = ServerORMTableFileInfo
