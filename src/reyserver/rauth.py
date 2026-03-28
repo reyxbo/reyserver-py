@@ -1429,28 +1429,35 @@ async def get_user_info(
     """
 
     # Get.
-    user = await sess.get(ServerORMAuthTableUser, user.user_id)
-    user_out = ServerORMModelAuthUserOut.model_validate(user)
+    model_user = await sess.get(ServerORMAuthTableUser, user.user_id)
+    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
 
-    return user_out
+    return model_user_out
 
 @router_auth.patch('/user/name')
 async def update_user_name(
-    name: str = Bind.Body(embed=True, min_length=3, max_length=50),
+    new_name: str = Bind.Body(embed=True, min_length=3, max_length=50),
     user: Bind.User = Bind.user,
     sess: Bind.Sess = Bind.sess.auth
-) -> None:
+) -> ServerORMModelAuthUserOut:
     """
     Update user name.
 
     Parameters
     ----------
-    name : User name.
+    new_name : New user name.
+
+    Returns
+    -------
+    User information.
     """
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    await sess.update(ServerORMAuthTableUser).values(name=name).where(sql_where).execute()
+    model_user, = await sess.update(ServerORMAuthTableUser).values(name=new_name).where(sql_where).execute_return()
+    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
+
+    return model_user_out
 
 @router_auth.patch('/user/password')
 async def update_user_password(
@@ -1459,7 +1466,7 @@ async def update_user_password(
     user: Bind.User = Bind.user,
     conn: Bind.Conn = Bind.conn.auth,
     sess: Bind.Sess = Bind.sess.auth
-) -> None:
+) -> ServerORMModelAuthUserOut:
     """
     Update user name.
 
@@ -1467,6 +1474,10 @@ async def update_user_password(
     ----------
     password : User password.
     new_password : New user password.
+
+    Returns
+    -------
+    User information.
     """
 
     # Check.
@@ -1477,7 +1488,10 @@ async def update_user_password(
     # Update.
     new_password_hash = hash_bcrypt(new_password).decode()
     sql_where = f'"user_id" = {user.user_id}'
-    await sess.update(ServerORMAuthTableUser).values(password=new_password_hash).where(sql_where).execute()
+    model_user, = await sess.update(ServerORMAuthTableUser).values(password=new_password_hash).where(sql_where).execute_return()
+    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
+
+    return model_user_out
 
 @router_auth.patch('/user/email')
 async def update_user_email(
@@ -1486,7 +1500,7 @@ async def update_user_email(
     user: Bind.User = Bind.user,
     sess: Bind.Sess = Bind.sess.auth,
     server: Bind.Server = Bind.server
-) -> None:
+) -> ServerORMModelAuthUserOut:
     """
     Update user email.
 
@@ -1494,6 +1508,10 @@ async def update_user_email(
     ----------
     new_email : New user email.
     code : Email verification code.
+
+    Returns
+    -------
+    User information.
     """
 
     # Parmeter.
@@ -1506,7 +1524,10 @@ async def update_user_email(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    await sess.update(ServerORMAuthTableUser).values(email=new_email).where(sql_where).execute()
+    model_user, = await sess.update(ServerORMAuthTableUser).values(email=new_email).where(sql_where).execute_return()
+    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
+
+    return model_user_out
 
 @router_auth.patch('/user/phone')
 async def update_user_phone(
@@ -1515,7 +1536,7 @@ async def update_user_phone(
     user: Bind.User = Bind.user,
     sess: Bind.Sess = Bind.sess.auth,
     server: Bind.Server = Bind.server
-) -> None:
+) -> ServerORMModelAuthUserOut:
     """
     Update user phone number.
 
@@ -1523,6 +1544,10 @@ async def update_user_phone(
     ----------
     new_phone : New user phone number.
     code : Sms verification code.
+
+    Returns
+    -------
+    User information.
     """
 
     # Parmeter.
@@ -1535,20 +1560,23 @@ async def update_user_phone(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    await sess.update(ServerORMAuthTableUser).values(phone=new_phone).where(sql_where).execute()
+    model_user = await sess.update(ServerORMAuthTableUser).values(phone=new_phone).where(sql_where).execute_return()
+    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
+
+    return model_user_out
 
 @router_auth.patch('/user/avatar')
 async def update_user_avatar(
     model_file_info: Bind.FileModelInfo = Bind.file_info,
     user: Bind.User = Bind.user,
     sess: Bind.Sess = Bind.sess.auth
-) -> int:
+) -> ServerORMModelAuthUserOut:
     """
     Update user phone number.
 
     Returns
     -------
-    Avatar file ID.
+    User information.
     """
 
     # Parameter.
@@ -1556,10 +1584,10 @@ async def update_user_avatar(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    await sess.update(ServerORMAuthTableUser).values(avatar=file_id).where(sql_where).execute()
-    await sess.commit()
+    model_user, = await sess.update(ServerORMAuthTableUser).values(avatar=file_id).where(sql_where).execute_return()
+    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
 
-    return file_id
+    return model_user_out
 
 @router_auth.post('/email-codes')
 async def send_email_code(
