@@ -1560,7 +1560,7 @@ async def update_user_phone(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    model_user = await sess.update(ServerORMAuthTableUser).values(phone=new_phone).where(sql_where).execute_return()
+    model_user, = await sess.update(ServerORMAuthTableUser).values(phone=new_phone).where(sql_where).execute_return()
     model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
 
     return model_user_out
