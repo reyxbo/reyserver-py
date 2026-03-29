@@ -21,7 +21,7 @@ from reykit.rre import PATTERN_EMAIL, PATTERN_PHONE, search
 from reykit.rtime import now
 
 from .rbase import ServerBase, exit_api
-from .rbind import Bind
+from .rbind import Bind, depend_file
 
 __all__ = (
     'ServerORMAuthTableUser',
@@ -1567,24 +1567,36 @@ async def update_user_phone(
 
 @router_auth.patch('/user/avatar')
 async def update_user_avatar(
-    model_file_info: Bind.FileModelInfo = Bind.file_info,
+    avatar: Bind.UploadFile = Bind.i.form,
     user: Bind.User = Bind.user,
-    sess: Bind.Sess = Bind.sess.auth
+    sess: Bind.Sess = Bind.sess.auth,
+    server: Bind.Server = Bind.server
 ) -> ServerORMModelAuthUserOut:
     """
     Update user phone number.
+
+    Parameters
+    ----------
+    avatar : Avatar image file.
 
     Returns
     -------
     User information.
     """
 
-    # Parameter.
-    file_id = model_file_info.file_id
+    # File.
+    _, model_file_info = await depend_file(
+        avatar,
+        'public',
+        note='Avatar image.',
+        user=user,
+        sess=sess,
+        server=server
+    )
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    model_user, = await sess.update(ServerORMAuthTableUser).values(avatar=file_id).where(sql_where).execute_return()
+    model_user, = await sess.update(ServerORMAuthTableUser).values(avatar=model_file_info.file_id).where(sql_where).execute_return()
     model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
 
     return model_user_out
