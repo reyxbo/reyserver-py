@@ -431,20 +431,25 @@ async def depend_file(
         name = file.filename
 
     # Upload.
-    file_path = file_store.index(file_md5)
 
-    ## Data.
+    ## Storage.
+    file_path = file_store.index(file_md5)
     if file_path is None:
         file_path = file_store.store(file_bytes)
-        file_relpath = file_store.get_relpath(file_path)
-        model_data = ServerORMTableFileData(
-            md5=file_md5,
-            size=file_size,
-            path=file_relpath
-        )
-        await sess.add(model_data)
-    else:
-        model_data = await sess.get(ServerORMTableFileData, file_md5)
+
+    ## Data.
+    file_relpath = file_store.get_relpath(file_path)
+    data = {
+        'md5': file_md5,
+        'size': file_size,
+        'path': file_relpath
+    }
+    model_data = await (
+        sess.insert(ServerORMTableFileData)
+        .values(data)
+        .update('md5', 'md5')
+        .execute_return()
+    )
 
     ## Information.
     model_info = ServerORMTableFileInfo(
