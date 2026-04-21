@@ -1293,7 +1293,7 @@ async def create_user(
 
     # Signup.
     update = {'password': hash_bcrypt(model_user.password).decode()}
-    table_user = ServerORMAuthTableUser.model_validate(model_user, update=update)
+    table_user = ServerORMAuthTableUser.r_validate(update)
     await sess.add(table_user)
     await sess.flush()
     user_role = ServerORMAuthTableAuthUserRole(
@@ -1430,7 +1430,7 @@ async def get_user_info(
 
     # Get.
     model_user = await sess.get(ServerORMAuthTableUser, user.user_id)
-    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
 
     return model_user_out
 
@@ -1455,7 +1455,7 @@ async def update_user_name(
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(name=new_name).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
 
     return model_user_out
 
@@ -1489,7 +1489,7 @@ async def update_user_password(
     new_password_hash = hash_bcrypt(new_password).decode()
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(password=new_password_hash).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
 
     return model_user_out
 
@@ -1525,7 +1525,7 @@ async def update_user_email(
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(email=new_email).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
 
     return model_user_out
 
@@ -1561,7 +1561,7 @@ async def update_user_phone(
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(phone=new_phone).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
 
     return model_user_out
 
@@ -1599,7 +1599,7 @@ async def update_user_avatar(
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess_auth.update(ServerORMAuthTableUser).values(avatar=model_file_info.file_id).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.model_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
 
     return model_user_out
 
