@@ -223,9 +223,10 @@ async def get_files(
     # Get.
     models_file_info = await (
         sess.select(ServerORMTableFileInfo)
+        .where(where)
+        .order_by('"create_time" DESC')
         .offset(page_params['offset'])
         .limit(page_params['limit'])
-        .where(where)
         .execute()
     )
 
