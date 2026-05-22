@@ -366,7 +366,7 @@ def auth_file_perm(
 @router_file.get('/{file_id}/content')
 async def get_file_conetnt(
     file_id: int = Bind.i.path,
-    with_type: bool = Bind.Query(False),
+    content_type: Literal['attachment', 'inline'] = Bind.Query('attachment'),
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server,
@@ -378,7 +378,9 @@ async def get_file_conetnt(
     Parameters
     ----------
     file_id : File ID.
-    with_type : Whether with content media type.
+    content_type : Content disposition type.
+        `Literal['attachment']`: The browser should download.
+        `Literal['inline']`: The browser should open.
 
     Returns
     -------
@@ -418,18 +420,14 @@ async def get_file_conetnt(
 
     # Response.
     file_abspath = file_store.get_abspath(params['path'])
-    if with_type:
-        media_type = get_content_type(file_abspath)
-    else:
-        media_type = None
-    response = FileResponse(file_abspath, filename=params['name'], media_type=media_type)
+    response = FileResponse(file_abspath, filename=params['name'], content_disposition_type=content_type)
 
     return response
 
 @router_file.get('/{file_id}/sign', dependencies=(Bind.file_check_read,))
 async def get_file_sign_url(
     file_id: int = Bind.i.path,
-    with_type: bool = Bind.Query(False),
+    content_type: Literal['attachment', 'inline'] = Bind.Query('attachment'),
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server
@@ -440,7 +438,9 @@ async def get_file_sign_url(
     Parameters
     ----------
     file_id : File ID.
-    with_type : Whether with content media type.
+    content_type : Content disposition type.
+        `Literal['attachment']`: The browser should download.
+        `Literal['inline']`: The browser should open.
 
     Returns
     -------
@@ -476,7 +476,7 @@ async def get_file_sign_url(
         server.api_file_download_token_seconds,
         user.user_id,
         file_id=file_id,
-        with_type=with_type
+        content_type=content_type
     )
 
     # Response.
@@ -519,7 +519,13 @@ async def get_sign_file_content(
         exit_api(403)
 
     # Download.
-    file_id = token_data['file_id']
-    response = await get_file_conetnt(file_id, token_data['with_type'], None, conn, server, False)
+    response = await get_file_conetnt(
+        token_data['file_id'],
+        token_data['content_type'],
+        None,
+        conn,
+        server,
+        False
+    )
 
     return response
