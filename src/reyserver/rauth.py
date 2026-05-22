@@ -76,7 +76,8 @@ TokenDataFile = TypedDict(
         'nbf': int,
         'exp': int,
         'type': Literal['file'],
-        'file_id': int
+        'file_id': int,
+        'with_type': bool
     }
 )
 'Token data of file.'

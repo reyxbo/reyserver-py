@@ -14,6 +14,7 @@ from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rdata import decode_jwt
+from reykit.rnet import get_content_type
 from reykit.ros import FileStore
 
 from .rbase import ServerBase, exit_api
@@ -365,6 +366,7 @@ def auth_file_perm(
 @router_file.get('/{file_id}/content')
 async def get_file_conetnt(
     file_id: int = Bind.i.path,
+    with_type: bool = Bind.i.query_n,
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server,
@@ -376,6 +378,7 @@ async def get_file_conetnt(
     Parameters
     ----------
     file_id : File ID.
+    with_type : Whether with content media type.
 
     Returns
     -------
@@ -415,13 +418,18 @@ async def get_file_conetnt(
 
     # Response.
     file_abspath = file_store.get_abspath(params['path'])
-    response = FileResponse(file_abspath, filename=params['name'])
+    if with_type:
+        media_type = get_content_type(file_abspath)
+    else:
+        media_type = None
+    response = FileResponse(file_abspath, filename=params['name'], media_type=media_type)
 
     return response
 
 @router_file.get('/{file_id}/sign', dependencies=(Bind.file_check_read,))
 async def get_file_sign_url(
     file_id: int = Bind.i.path,
+    with_type: bool = Bind.i.query_n,
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server
@@ -432,6 +440,7 @@ async def get_file_sign_url(
     Parameters
     ----------
     file_id : File ID.
+    with_type : Whether with content media type.
 
     Returns
     -------
@@ -466,7 +475,8 @@ async def get_file_sign_url(
         server.api_auth_key,
         server.api_file_download_token_seconds,
         user.user_id,
-        file_id=file_id
+        file_id=file_id,
+        with_type=with_type
     )
 
     # Response.
@@ -510,6 +520,6 @@ async def get_sign_file_content(
 
     # Download.
     file_id = token_data['file_id']
-    response = await get_file_conetnt(file_id, None, conn, server, False)
+    response = await get_file_conetnt(file_id, token_data['with_type'], None, conn, server, False)
 
     return response
