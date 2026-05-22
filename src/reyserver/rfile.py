@@ -14,6 +14,7 @@ from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rdata import decode_jwt
+from reykit.ros import FileStore
 
 from .rbase import ServerBase, exit_api
 from .rbind import Bind
@@ -333,12 +334,41 @@ async def delete_file(
     ## Storge.
     server.api_file_store.delete(model_file_info.md5)
 
+def auth_file_perm(
+    visible: Literal['public', 'internal', 'private'],
+    user_id: int,
+    user: Bind.UserOpt | None
+) -> None:
+    """
+    Authentication document permissions.
+
+    Parameters
+    ----------
+    visible : File owner user ID.
+    user_id : File visible type.
+    user : User data.
+    """
+
+    # Check.
+    if not (
+        visible == 'public'
+        or user is not None
+        and (
+            visible == 'internal'
+            or visible == 'private'
+            and user_id == user.user_id
+            or user.is_admin
+        )
+    ):
+        exit_api(403)
+
 @router_file.get('/{file_id}/content')
 async def get_file_conetnt(
     file_id: int = Bind.i.path,
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
-    server: Bind.Server = Bind.server
+    server: Bind.Server = Bind.server,
+    auth: bool = True
 ) -> FileResponse:
     """
     Get file bytes content.
@@ -373,14 +403,12 @@ async def get_file_conetnt(
     # Check.
     if params is None:
         exit_api(404)
-    if not (
-        params['visible'] == 'public'
-        or user is not None
-        and (
-            params['visible'] == 'internal'
-            or params['visible'] == 'private'
-            and params['user_id'] == user.user_id
-            or user.is_admin
+    if (
+        auth
+        and auth_file_perm(
+            params['visible'],
+            params['user_id'],
+            user
         )
     ):
         exit_api(403)
@@ -394,7 +422,8 @@ async def get_file_conetnt(
 @router_file.get('/{file_id}/sign', dependencies=(Bind.file_check_read,))
 async def get_file_sign_url(
     file_id: int = Bind.i.path,
-    user: Bind.User = Bind.user,
+    user: Bind.UserOpt = Bind.user_opt,
+    conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server
 ) -> FileResponse:
     """
@@ -410,6 +439,26 @@ async def get_file_sign_url(
     """
 
     from .rauth import encode_token
+
+    # Search.
+    sql = (
+        'SELECT "user_id", "visible"\n'
+        'FROM "info"\n'
+        'WHERE "file_id" = :file_id\n'
+        'LIMIT 1'
+    )
+    result = await conn.execute(sql, file_id=file_id)
+    params = result.to_row()
+
+    # Check.
+    if params is None:
+        exit_api(404)
+    if auth_file_perm(
+        params['visible'],
+        params['user_id'],
+        user
+    ):
+        exit_api(403)
 
     # Token.
     token = encode_token(
@@ -461,6 +510,6 @@ async def get_sign_file_content(
 
     # Download.
     file_id = token_data['file_id']
-    response = await get_file_conetnt(file_id, None, conn, server)
+    response = await get_file_conetnt(file_id, None, conn, server, False)
 
     return response
