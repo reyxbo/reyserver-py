@@ -366,7 +366,7 @@ def auth_file_perm(
 @router_file.get('/{file_id}/content')
 async def get_file_conetnt(
     file_id: int = Bind.i.path,
-    with_type: bool = Bind.i.query_n,
+    with_type: bool = Bind.Query(False),
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server,
@@ -429,7 +429,7 @@ async def get_file_conetnt(
 @router_file.get('/{file_id}/sign', dependencies=(Bind.file_check_read,))
 async def get_file_sign_url(
     file_id: int = Bind.i.path,
-    with_type: bool = Bind.i.query_n,
+    with_type: bool = Bind.Query(False),
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server
