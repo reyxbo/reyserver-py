@@ -366,7 +366,7 @@ def auth_file_perm(
 @router_file.get('/{file_id}/content')
 async def get_file_conetnt(
     file_id: int = Bind.i.path,
-    content_type: Literal['attachment', 'inline'] = Bind.Query('attachment'),
+    handle: Literal['download', 'open'] = Bind.Query('download'),
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server,
@@ -378,9 +378,9 @@ async def get_file_conetnt(
     Parameters
     ----------
     file_id : File ID.
-    content_type : Content disposition type.
-        `Literal['attachment']`: The browser should download.
-        `Literal['inline']`: The browser should open.
+    handle : Response header add content disposition type.
+        `Literal['download']`: The browser should download.
+        `Literal['open']`: The browser should open.
 
     Returns
     -------
@@ -420,14 +420,18 @@ async def get_file_conetnt(
 
     # Response.
     file_abspath = file_store.get_abspath(params['path'])
-    response = FileResponse(file_abspath, filename=params['name'], content_disposition_type=content_type)
+    content_disposition_type = {
+        'download': 'attachment',
+        'open': 'inline'
+    }[handle]
+    response = FileResponse(file_abspath, filename=params['name'], content_disposition_type=content_disposition_type)
 
     return response
 
 @router_file.get('/{file_id}/sign', dependencies=(Bind.file_check_read,))
 async def get_file_sign_url(
     file_id: int = Bind.i.path,
-    content_type: Literal['attachment', 'inline'] = Bind.Query('attachment'),
+    handle: Literal['download', 'open'] = Bind.Query('download'),
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server
@@ -438,9 +442,9 @@ async def get_file_sign_url(
     Parameters
     ----------
     file_id : File ID.
-    content_type : Content disposition type.
-        `Literal['attachment']`: The browser should download.
-        `Literal['inline']`: The browser should open.
+    handle : Response header add content disposition type.
+        `Literal['download']`: The browser should download.
+        `Literal['open']`: The browser should open.
 
     Returns
     -------
@@ -476,7 +480,7 @@ async def get_file_sign_url(
         server.api_file_download_token_seconds,
         user.user_id,
         file_id=file_id,
-        content_type=content_type
+        handle=handle
     )
 
     # Response.
@@ -521,7 +525,7 @@ async def get_sign_file_content(
     # Download.
     response = await get_file_conetnt(
         token_data['file_id'],
-        token_data['content_type'],
+        token_data['handle'],
         None,
         conn,
         server,
