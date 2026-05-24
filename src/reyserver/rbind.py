@@ -592,8 +592,7 @@ async def depend_file_check_delete(
     if params is None:
         exit_api(404)
     if not (
-        params['visible'] == 'private'
-        and params['user_id'] == user.user_id
+        params['user_id'] == user.user_id
         or user.is_admin
     ):
         exit_api(403)

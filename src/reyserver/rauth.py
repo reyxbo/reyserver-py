@@ -264,6 +264,7 @@ class ServerORMModelAuthUserOut(ServerBase, rorm.Model):
     email: rorm.Email | None = rorm.Field(comment='User email.')
     phone: str | None = rorm.Field(rorm.types.CHAR(11), comment=f'User phone.', re=PATTERN_PHONE)
     avatar: int | None = rorm.Field(comment='User avatar file ID.')
+    is_admin: bool = rorm.Field(comment='Is administrator.')
 
 class ServerAuthVerifyEmail(ServerBase):
     """
@@ -1431,7 +1432,7 @@ async def get_user_info(
 
     # Get.
     model_user = await sess.get(ServerORMAuthTableUser, user.user_id)
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
 
     return model_user_out
 
@@ -1456,7 +1457,7 @@ async def update_user_name(
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(name=new_name).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
 
     return model_user_out
 
@@ -1490,7 +1491,7 @@ async def update_user_password(
     new_password_hash = hash_bcrypt(new_password).decode()
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(password=new_password_hash).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
 
     return model_user_out
 
@@ -1526,7 +1527,7 @@ async def update_user_email(
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(email=new_email).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
 
     return model_user_out
 
@@ -1562,7 +1563,7 @@ async def update_user_phone(
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(phone=new_phone).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
 
     return model_user_out
 
@@ -1600,7 +1601,7 @@ async def update_user_avatar(
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess_auth.update(ServerORMAuthTableUser).values(avatar=model_file_info.file_id).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user)
+    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
 
     return model_user_out
 
