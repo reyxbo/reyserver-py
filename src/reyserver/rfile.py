@@ -15,7 +15,6 @@ from fastapi.responses import FileResponse
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rdata import decode_jwt
 from reykit.rnet import get_content_type
-from reykit.ros import FileStore
 
 from .rbase import ServerBase, exit_api
 from .rbind import Bind
@@ -420,11 +419,17 @@ async def get_file_conetnt(
 
     # Response.
     file_abspath = file_store.get_abspath(params['path'])
+    media_type = get_content_type(file_abspath)
     content_disposition_type = {
         'download': 'attachment',
         'open': 'inline'
     }[handle]
-    response = FileResponse(file_abspath, filename=params['name'], content_disposition_type=content_disposition_type)
+    response = FileResponse(
+        file_abspath,
+        filename=params['name'],
+        media_type=media_type,
+        content_disposition_type=content_disposition_type
+    )
 
     return response
 
