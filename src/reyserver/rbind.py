@@ -402,7 +402,8 @@ async def depend_file(
     note: str | None = Forms(None),
     user: User = Depends(depend_user),
     sess: DatabaseORMSessionAsync = ServerBindInstanceDatabaseSession().file,
-    server: 'Server' = Depends(depend_server)
+    server: 'Server' = Depends(depend_server),
+    is_system: bool = False
 ) -> 'FileModels':
     """
     Dependencie function of upload file data and information.
@@ -429,6 +430,10 @@ async def depend_file(
     file_size = len(file_bytes)
     if name is None:
         name = file.filename
+    if is_system:
+        user_id = None
+    else:
+        user_id = user.user_id
 
     # Upload.
 
@@ -453,7 +458,7 @@ async def depend_file(
 
     ## Information.
     model_info = ServerORMTableFileInfo(
-        user_id=user.user_id,
+        user_id=user_id,
         visible=visible,
         md5=file_md5,
         size=file_size,

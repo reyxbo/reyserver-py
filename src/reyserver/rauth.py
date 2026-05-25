@@ -1595,7 +1595,8 @@ async def update_user_avatar(
         note='Avatar image.',
         user=user,
         sess=sess_file,
-        server=server
+        server=server,
+        is_system=True
     )
 
     # Update.
