@@ -329,10 +329,11 @@ async def delete_file(
         f'        WHERE "md5" = \'{model_file_info.md5}\'\n'
         ')'
     )
-    await sess.delete(ServerORMTableFileData).where(sql_where).execute()
+    models = await sess.delete(ServerORMTableFileData).where(sql_where).execute_return()
 
     ## Storge.
-    server.api_file_store.delete(model_file_info.md5)
+    if models != []:
+        server.api_file_store.delete(model_file_info.md5)
 
 def auth_file_perm(
     visible: Literal['public', 'internal', 'private'],
@@ -440,7 +441,7 @@ async def get_file_sign_url(
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     server: Bind.Server = Bind.server
-) -> FileResponse:
+) -> str:
     """
     Get file URL with sign token.
 
