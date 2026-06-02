@@ -102,7 +102,7 @@ ResponseToken = TypedDict(
     'ResponseToken',
     {
         'access_token': Token,
-        'refresh_token': NotRequired[Token],
+        'refresh_token': Token,
         'token_type': Literal['Bearer'],
     }
 )
@@ -1297,6 +1297,7 @@ async def refresh_token(
     # Response.
     response: ResponseToken = {
         'access_token': token,
+        'refresh_token': refresh_token,
         'token_type': 'Bearer'
     }
 
