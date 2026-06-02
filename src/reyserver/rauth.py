@@ -67,6 +67,16 @@ TokenDataUser = TypedDict(
         'is_admin': bool
     }
 )
+TokenDataUserRefresh = TypedDict(
+    'TokenDataUserRefresh',
+    {
+        'sub': UserIDStr,
+        'iat': int,
+        'nbf': int,
+        'exp': int,
+        'type': Literal['user_refresh'],
+    }
+)
 'Token data of user.'
 TokenDataFile = TypedDict(
     'TokenDataFile',
@@ -1157,7 +1167,7 @@ def encode_token(
 
     # Create.
     now_timestamp_s = now('timestamp_s')
-    json: TokenDataUser = {
+    json: TokenData = {
         **data,
         'sub': str(user_id),
         'iat': now_timestamp_s,
@@ -1270,7 +1280,7 @@ async def refresh_token(
     """
 
     # Decode.
-    refresh_token_data: TokenData | None = decode_jwt(refresh_token, server.api_auth_key)
+    refresh_token_data: TokenDataUserRefresh | None = decode_jwt(refresh_token, server.api_auth_key)
 
     # Check.
     if (
@@ -1280,7 +1290,7 @@ async def refresh_token(
         exit_api(401)
 
     # Token.
-    user_id = int(refresh_token_data['exp'])
+    user_id = int(refresh_token_data['sub'])
     user_data = await get_user_data(conn, user_id, 'user_id')
     if user_data is None:
         exit_api(401)
