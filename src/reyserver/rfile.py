@@ -408,15 +408,12 @@ async def get_file_conetnt(
     # Check.
     if params is None:
         exit_api(404)
-    if (
-        auth
-        and auth_file_perm(
+    if auth:
+        auth_file_perm(
             params['visible'],
             params['user_id'],
             user
         )
-    ):
-        exit_api(403)
 
     # Response.
     file_abspath = file_store.get_abspath(params['path'])
@@ -472,12 +469,11 @@ async def get_file_sign_url(
     # Check.
     if params is None:
         exit_api(404)
-    if auth_file_perm(
+    auth_file_perm(
         params['visible'],
         params['user_id'],
         user
-    ):
-        exit_api(403)
+    )
 
     # Token.
     token = encode_token(
@@ -526,7 +522,7 @@ async def get_sign_file_content(
         token_data is None
         or token_data['type'] != 'file'
     ):
-        exit_api(403)
+        exit_api(401)
 
     # Download.
     response = await get_file_conetnt(

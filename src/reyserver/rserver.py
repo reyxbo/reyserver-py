@@ -55,6 +55,8 @@ class Server(ServerBase, Singleton):
     'Authentication API JWT encryption key.'
     api_auth_user_token_seconds: int
     'Authentication API user data token valid seconds.'
+    api_auth_user_refresh_token_seconds: int
+    'Authentication API user data refresh token valid seconds.'
     api_auth_admin_role_name: str
     'Authentication API administrator role name.'
     api_auth_init_role_id: int
@@ -493,7 +495,8 @@ class Server(ServerBase, Singleton):
         client_phone: 'rauth.ServerAuthVerifyPhone',
         init_role_id: int,
         key: str | None = None,
-        user_token_seconds: int = 28800,
+        user_token_seconds: int = 28800, # Default eight hours.
+        user_refresh_token_seconds: int = 31536000, # Default one year.
         admin_role_name: str = 'admin'
     ) -> None:
         """
@@ -508,6 +511,7 @@ class Server(ServerBase, Singleton):
         key : JWT encryption key.
             - `None`: Random 32 length string.
         user_token_seconds : User data token valid seconds.
+        user_refresh_token_seconds : User data refresh token valid seconds.
         admin_role_name : Administrator role name.
         """
 
@@ -532,6 +536,7 @@ class Server(ServerBase, Singleton):
         self.api_auth_init_role_id = init_role_id
         self.api_auth_key = key
         self.api_auth_user_token_seconds = user_token_seconds
+        self.api_auth_user_refresh_token_seconds = user_refresh_token_seconds
         self.api_auth_admin_role_name = admin_role_name
         self.add_router(router_auth, prefix=f'{self._prefix}/auth', tags=['auth'])
         self.is_started_auth = True

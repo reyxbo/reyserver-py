@@ -14,7 +14,7 @@ from fastapi import APIRouter
 from reyclient.rali import ClientAliVerifySms
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rbase import throw
-from reykit.rdata import encode_jwt, hash_bcrypt, is_hash_bcrypt
+from reykit.rdata import encode_jwt, decode_jwt, hash_bcrypt, is_hash_bcrypt
 from reykit.remail import Email
 from reykit.rrand import randchar
 from reykit.rre import PATTERN_EMAIL, PATTERN_PHONE, search
@@ -36,7 +36,7 @@ __all__ = (
     'router_auth'
 )
 
-type AuthenticationTokenType = Literal['user', 'file']
+type AuthenticationTokenType = Literal['user', 'user_refresh', 'file']
 'Authentication token type range.'
 type VerificationCodeScenes = Literal['login', 'signup', 'reset', 'update']
 'Verification code scene range.'
@@ -102,7 +102,8 @@ ResponseToken = TypedDict(
     'ResponseToken',
     {
         'access_token': Token,
-        'token_type': Literal['Bearer']
+        'refresh_token': NotRequired[Token],
+        'token_type': Literal['Bearer'],
     }
 )
 'JSON dictionary with Token string.'
@@ -1173,6 +1174,7 @@ async def create_token(
     grant_type: Literal['password', 'email_code', 'phone_code'] = Bind.i.form,
     username: str = Bind.Form(max_length=255),
     password: str = Bind.i.form,
+    with_refresh: bool = Bind.Form(False),
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
 ) -> ResponseToken:
@@ -1187,6 +1189,7 @@ async def create_token(
         - `Literal['phone_code']`: Use `phone+code`.
     username : User name or email address or phone number.
     password : User password or verification code.
+    with_refresh : Whether to need return refresh token.
 
     Returns
     -------
@@ -1236,7 +1239,67 @@ async def create_token(
     )
 
     # Response.
-    response = {
+    response: ResponseToken = {
+        'access_token': token,
+        'token_type': 'Bearer'
+    }
+    if with_refresh:
+        response['refresh_token'] = encode_token(
+            'user_refresh',
+            server.api_auth_key,
+            server.api_auth_user_refresh_token_seconds,
+            user_data['user_id'],
+            perm_apis=user_data['perm_apis'],
+            is_admin=is_admin
+        )
+
+    return response
+
+@router_auth.post('/token/refresh')
+async def refresh_token(
+    refresh_token: str = Bind.i.body,
+    conn: Bind.Conn = Bind.conn.auth,
+    server: Bind.Server = Bind.server
+) -> ResponseToken:
+    """
+    Create token.
+
+    Parameters
+    ----------
+    refresh_token : Refresh token.
+
+    Returns
+    -------
+    JSON with "token".
+    """
+
+    # Decode.
+    refresh_token_data: TokenData | None = decode_jwt(refresh_token, server.api_auth_key)
+
+    # Check.
+    if (
+        refresh_token_data is None
+        or refresh_token_data['type'] != 'user_refresh'
+    ):
+        exit_api(401)
+
+    # Token.
+    user_id = int(refresh_token_data['exp'])
+    user_data = await get_user_data(conn, user_id, 'user_id')
+    if user_data is None:
+        exit_api(401)
+    is_admin = server.api_auth_admin_role_name in user_data['role_names']
+    token = encode_token(
+        'user',
+        server.api_auth_key,
+        server.api_auth_user_token_seconds,
+        user_data['user_id'],
+        perm_apis=user_data['perm_apis'],
+        is_admin=is_admin
+    )
+
+    # Response.
+    response: ResponseToken = {
         'access_token': token,
         'token_type': 'Bearer'
     }

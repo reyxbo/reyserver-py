@@ -361,7 +361,7 @@ async def depend_user_opt(
 
     # Authentication.
     if token_data['type'] != 'user':
-        exit_api(403)
+        exit_api(401)
     perm_apis = [
         f'^{pattern}'
         for pattern in token_data['perm_apis']
