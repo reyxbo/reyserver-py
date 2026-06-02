@@ -1253,7 +1253,7 @@ async def create_token(
 
 @router_auth.post('/token/refresh')
 async def refresh_token(
-    refresh_token: str = Bind.i.body,
+    refresh_token: str = Bind.i.body_k,
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
 ) -> ResponseToken:
