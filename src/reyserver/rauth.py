@@ -1174,7 +1174,6 @@ async def create_token(
     grant_type: Literal['password', 'email_code', 'phone_code'] = Bind.i.form,
     username: str = Bind.Form(max_length=255),
     password: str = Bind.i.form,
-    with_refresh: bool = Bind.Form(False),
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
 ) -> ResponseToken:
@@ -1189,7 +1188,6 @@ async def create_token(
         - `Literal['phone_code']`: Use `phone+code`.
     username : User name or email address or phone number.
     password : User password or verification code.
-    with_refresh : Whether to need return refresh token.
 
     Returns
     -------
@@ -1239,19 +1237,17 @@ async def create_token(
     )
 
     # Response.
+    refresh_token = encode_token(
+        'user_refresh',
+        server.api_auth_key,
+        server.api_auth_user_refresh_token_seconds,
+        user_data['user_id']
+    )
     response: ResponseToken = {
         'access_token': token,
+        'refresh_token': refresh_token,
         'token_type': 'Bearer'
     }
-    if with_refresh:
-        response['refresh_token'] = encode_token(
-            'user_refresh',
-            server.api_auth_key,
-            server.api_auth_user_refresh_token_seconds,
-            user_data['user_id'],
-            perm_apis=user_data['perm_apis'],
-            is_admin=is_admin
-        )
 
     return response
 
@@ -1382,8 +1378,15 @@ async def create_user(
     )
 
     # Response.
+    refresh_token = encode_token(
+        'user_refresh',
+        server.api_auth_key,
+        server.api_auth_user_refresh_token_seconds,
+        user_data['user_id']
+    )
     response = {
         'access_token': token,
+        'refresh_token': refresh_token,
         'token_type': 'Bearer'
     }
 
