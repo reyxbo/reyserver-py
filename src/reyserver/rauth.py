@@ -1365,7 +1365,7 @@ async def create_user(
 
     # Signup.
     update = {'password': hash_bcrypt(model_user.password).decode()}
-    table_user = ServerORMAuthTableUser.r_validate(update)
+    table_user = ServerORMAuthTableUser.r_validate(model_user, update)
     await sess.add(table_user)
     await sess.flush()
     user_role = ServerORMAuthTableAuthUserRole(
