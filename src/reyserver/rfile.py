@@ -215,11 +215,11 @@ async def get_files(
 
     # Parameter.
     if user is None:
-        where = '"visible" = \'public\''
+        where = '"visible" = \'public\' AND "user_id" IS NOT NULL'
     elif user.is_admin:
         where = 'TRUE'
     else:
-        where = f'"visible" != \'private\' OR "user_id" = {user.user_id}'
+        where = f'"visible" != \'private\' AND "user_id" IS NOT NULL OR "user_id" = {user.user_id}'
 
     # Get.
     models_file_info = await (
