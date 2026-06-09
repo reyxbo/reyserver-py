@@ -120,8 +120,7 @@ class Server(ServerBase, Singleton):
         self.app = FastAPI(
             dependencies=depend,
             lifespan=lifespan,
-            server=self,
-            redirect_slashes=True
+            server=self
         )
         self._prefix = prefix or ''
 

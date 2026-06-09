@@ -8,8 +8,9 @@
 @Explain : Public methods.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, FileResponse
+from reykit.rbase import throw
 from reykit.ros import File, Folder
 
 from .rbind import Bind
@@ -80,7 +81,7 @@ async def handle_frontend_route(
         or server.is_started_link
         and path.startswith('l/')
     ):
-        raise HTTPException(404)
+        throw(AssertionError, path, text='unexpectedly matched to other routes')
 
     # Parameter.
     public_dir = server.api_public_dir

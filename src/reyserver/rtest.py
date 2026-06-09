@@ -20,7 +20,7 @@ __all__ = (
 
 router_test = APIRouter()
 
-@router_test.get('/')
+@router_test.get('')
 async def test() -> Literal['test']:
     """
     Test.

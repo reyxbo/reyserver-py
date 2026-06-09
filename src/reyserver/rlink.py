@@ -125,7 +125,7 @@ def build_db_link(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 router_link = APIRouter()
 router_link_l = APIRouter()
 
-@router_link.get('/')
+@router_link.get('')
 async def get_links(
     page_params: Bind.PageParams = Bind.page,
     user: Bind.User = Bind.user,
@@ -212,7 +212,7 @@ async def map_link(
 
     return response
 
-@router_link.post('/')
+@router_link.post('')
 async def create_link(
     url: Bind.Url = Bind.i.body,
     expire_time: Bind.Datetime | None = Bind.i.body_n,

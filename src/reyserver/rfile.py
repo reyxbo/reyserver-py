@@ -198,7 +198,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 
 router_file = APIRouter()
 
-@router_file.get('/')
+@router_file.get('')
 async def get_files(
     page_params: Bind.PageParams = Bind.page,
     user: Bind.UserOpt = Bind.user_opt,
@@ -286,7 +286,7 @@ async def get_file(
 
     return model_info
 
-@router_file.post('/')
+@router_file.post('')
 async def create_file(
     model_file_info: ServerORMTableFileInfo = Bind.file_info
 ) -> ServerORMTableFileInfo:
