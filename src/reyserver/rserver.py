@@ -528,7 +528,7 @@ class Server(ServerBase, Singleton):
             self.db is None
             or 'auth' not in self.db
         ):
-            throw(TypeError, self.db)
+            throw(TypeError, self.db.__engine_dict)
         engine = self.db.auth
         build_db_auth(engine)
 
@@ -565,7 +565,7 @@ class Server(ServerBase, Singleton):
             self.db is None
             or 'file' not in self.db
         ):
-            throw(TypeError, self.db)
+            throw(TypeError, self.db.__engine_dict)
         engine = self.db.file
         build_db_file(engine)
 
@@ -587,7 +587,7 @@ class Server(ServerBase, Singleton):
             self.db is None
             or 'link' not in self.db
         ):
-            throw(TypeError, self.db)
+            throw(TypeError, self.db.__engine_dict)
         engine = self.db.link
         build_db_link(engine)
 
