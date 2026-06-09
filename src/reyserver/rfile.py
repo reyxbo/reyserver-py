@@ -233,7 +233,7 @@ async def get_files(
 
     # Total.
     if page_params['with_total']:
-        total = await conn.execute.count(ServerORMTableFileInfo)
+        total = await conn.execute.count(ServerORMTableFileInfo, where)
     else:
         total = None
 
@@ -509,10 +509,6 @@ async def get_sign_file_content(
     """
 
     from .rauth import TokenDataFile
-
-    # Check.
-    if not server.is_started_auth:
-        exit_api(401)
 
     # Decode.
     token_data: TokenDataFile | None = decode_jwt(token, server.api_auth_key)

@@ -78,6 +78,8 @@ async def handle_frontend_route(
     if (
         server._prefix
         and path.startswith(server._prefix[1:] + '/')
+        or server.is_started_link
+        and path.startswith('l/')
     ):
         throw(AssertionError, path, text='unexpectedly matched to other routes')
 
