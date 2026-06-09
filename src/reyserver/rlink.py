@@ -238,7 +238,7 @@ async def create_link(
         'url': url,
         'user_id': user.user_id
     }
-    [model_link, ...] = await (
+    model_link, *_ = await (
         sess.insert(ServerORMTableLink)
         .values(data)
         .execute_return()
