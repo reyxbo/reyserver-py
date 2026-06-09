@@ -10,9 +10,9 @@
 
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, FileResponse
-from reykit.rbase import throw
 from reykit.ros import File, Folder
 
+from .rbase import exit_api
 from .rbind import Bind
 
 __all__ = (
@@ -81,7 +81,7 @@ async def handle_frontend_route(
         or server.is_started_link
         and path.startswith('l/')
     ):
-        throw(AssertionError, path, text='unexpectedly matched to other routes')
+        exit_api(404)
 
     # Parameter.
     public_dir = server.api_public_dir
