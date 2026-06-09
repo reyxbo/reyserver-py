@@ -14,6 +14,7 @@ from .rbind import *
 from .rcache import *
 from .rclient import *
 from .rfile import *
+from .rlink import *
 from .rpublic import *
 from .rredirect import *
 from .rserver import *
