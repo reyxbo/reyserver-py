@@ -8,12 +8,13 @@
 @Explain : Mapping link methods.
 """
 
-from pydantic import HttpUrl
 from fastapi import APIRouter
 from fastapi.responses import RedirectResponse
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
+from reykit.rnum import encode_base62, decode_base62
+from reykit.rtime import now
 
-from .rbase import ServerBase
+from .rbase import ServerBase, throw, exit_api
 from .rbind import Bind
 from .rcache import wrap_cache
 
@@ -28,8 +29,21 @@ class ServerORMTableLink(ServerBase, rorm.Table):
     update_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record update time.')
     expire_time: rorm.Datetime = rorm.Field(index_n=True, comment='Link expire time.')
     id: int = rorm.Field(key_auto=True, comment='ID.')
-    url: str = rorm.Field(rorm.types.TEXT, not_null=True, index_u=True, comment='Redirect URL.')
+    url: rorm.HttpUrl = rorm.Field(rorm.types.TEXT, not_null=True, index_u=True, comment='Redirect HTTP or HTTPS URL.')
     user_id: int = rorm.Field(index_n=True, comment='Link owner user ID. When is null, then owner is system.')
+
+class ServerORMTableLinkOut(ServerBase, rorm.Model):
+    """
+    Server mapping link out information ORM model.
+    """
+
+    create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
+    update_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record update time.')
+    expire_time: rorm.Datetime = rorm.Field(index_n=True, comment='Link expire time.')
+    id: int = rorm.Field(key_auto=True, comment='ID.')
+    url: rorm.HttpUrl = rorm.Field(rorm.types.TEXT, not_null=True, index_u=True, comment='Redirect HTTP or HTTPS URL.')
+    user_id: int = rorm.Field(index_n=True, comment='Link owner user ID. When is null, then owner is system.')
+    code: str = rorm.Field(not_null=True, comment='Mapping link code.')
 
 def build_db_link(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
@@ -109,7 +123,7 @@ async def get_links(
     user: Bind.User = Bind.user,
     conn: Bind.Conn = Bind.conn.file,
     sess: Bind.Sess = Bind.sess.link
-) -> Bind.Page[ServerORMTableLink]:
+) -> Bind.Page[ServerORMTableLinkOut]:
     """
     Get mapping link table.
 
@@ -120,12 +134,12 @@ async def get_links(
 
     # Parameter.
     if user.is_admin:
-        where = 'TRUE'
+        where = '"expire_time" < NOW()'
     else:
-        where = f'"user_id" = {user.user_id}'
+        where = f'"user_id" = {user.user_id} AND "expire_time" < NOW()'
 
     # Get.
-    models_file_info = await (
+    models_link = await (
         sess.select(ServerORMTableLink)
         .where(where)
         .order_by('"create_time" DESC')
@@ -133,6 +147,10 @@ async def get_links(
         .limit(page_params['limit'])
         .execute()
     )
+    models_link = [
+        ServerORMTableLinkOut.r_validate(model, {'code': encode_link(model.id)})
+        for model in models_link
+    ]
 
     # Total.
     if page_params['with_total']:
@@ -144,7 +162,7 @@ async def get_links(
     page = Bind.Page(
         offset=page_params['offset'],
         limit=page_params['limit'],
-        data=models_file_info,
+        data=models_link,
         total=total
     )
 
@@ -159,11 +177,27 @@ async def map_link(
 ) -> RedirectResponse:
     """
     Redirect URL by mapping link.
+
+    Parameters
+    ----------
+    code : Mapping link code.
+
+    Returns
+    -------
+    Redirect response.
     """
 
     # Get.
     link_id = decode_link(code)
     model_link = await sess.get(ServerORMTableLink, link_id)
+
+    # Check.
+    now_time = now()
+    if (
+        model_link is None
+        or model_link.expire_time >= now_time
+    ):
+        exit_api(404)
 
     # Response.
     response = RedirectResponse(model_link.url, 308)
@@ -172,21 +206,69 @@ async def map_link(
 
 @router_link.post('/')
 async def create_link(
-    url: str = Bind.i.body_k,
+    url: Bind.Url = Bind.i.body,
+    expire_time: Bind.Datetime | None = Bind.i.body_n,
     user: Bind.User = Bind.user,
     sess: Bind.Sess = Bind.sess.link
-) -> ServerORMTableLink: ...
+) -> ServerORMTableLink:
+    """
+    Create mapping link.
 
-@router_link.delete('/{code}')
+    Parameters
+    ----------
+    url : Redirect URL.
+    expire_time : Link expire time.
+
+    Returns
+    -------
+    Link information.
+    """
+
+    # Insert.
+    data = {
+        'expire_time': expire_time,
+        'url': url,
+        'user_id': user.user_id
+    }
+    [model_link, ...] = await (
+        sess.insert(ServerORMTableLink)
+        .values(data)
+        .execute_return()
+    )
+
+    return model_link
+
+@router_link.delete('/{link_id}')
 async def expire_link(
-    code: str = Bind.i.path,
+    link_id: int = Bind.i.path,
     user: Bind.User = Bind.user,
     sess: Bind.Sess = Bind.sess.link
-) -> None: ...
+) -> None:
+    """
+    Expire mapping link.
+
+    Parameters
+    ----------
+    link_id : Link ID.
+    """
+
+    # Update.
+    now_time = now()
+    where = f'"id" = {link_id} AND "user_id" = {user.user_id}'
+    result = await (
+        sess.update(ServerORMTableLink)
+        .values(expire_time=now_time)
+        .where(where)
+        .execute()
+    )
+
+    # Check.
+    if result.empty:
+        exit_api(404)
 
 def encode_link(link_id: int) -> str:
     """
-    Encode link code to link ID.
+    Encode link ID to link code.
 
     Parameters
     ----------
@@ -194,10 +276,17 @@ def encode_link(link_id: int) -> str:
 
     Returns
     -------
-    Link ID.
+    Link code.
     """
 
-    ...
+    # Check.
+    if link_id < 1:
+        throw(ValueError, link_id)
+
+    # Encode.
+    code = encode_base62(link_id).rjust(4, '0')
+
+    return code
 
 def decode_link(code: str) -> int:
     """
@@ -205,11 +294,18 @@ def decode_link(code: str) -> int:
 
     Parameters
     ----------
-    link_id : Link ID.
+    link_id : Link code.
 
     Returns
     -------
-    Link code.
+    Link ID.
     """
 
-    ...
+    # Decode.
+    link_id = decode_base62(code)
+
+    # Check.
+    if link_id == 0:
+        throw(ValueError, link_id)
+
+    return link_id

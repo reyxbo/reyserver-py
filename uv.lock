@@ -2213,7 +2213,7 @@ wheels = [
 
 [[package]]
 name = "reyclient"
-version = "1.0.7"
+version = "1.0.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alibabacloud-dypnsapi20170525" },
@@ -2222,12 +2222,12 @@ dependencies = [
     { name = "reykit" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/04/61/2d106585e7c9b0f3f7859de8d97b7913586a364b9db9702995245a6f9a3a/reyclient-1.0.7-py3-none-any.whl", hash = "sha256:7f1d3d8e167ed457e22ff45bfc3411da49c395ec43741f9ca570136edc0a9b22", size = 17408, upload-time = "2026-03-25T12:28:27.688Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/7b/eee20b7bdc212496683fb57f29e387d16ff3b5878fb75c3f310275520653/reyclient-1.0.8-py3-none-any.whl", hash = "sha256:6d0a707c9a86daef16e3aa1036f36435edd99e6f06150268b24116f4985fb9ca", size = 17416, upload-time = "2026-06-09T07:27:48.986Z" },
 ]
 
 [[package]]
 name = "reydb"
-version = "1.3.57"
+version = "1.3.58"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asyncpg" },
@@ -2238,12 +2238,12 @@ dependencies = [
     { name = "sqlmodel" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/a5/2a19b4bfecf7c20613af802bfe1462f72f6e266899df3cdb7b2fd67f21f9/reydb-1.3.57-py3-none-any.whl", hash = "sha256:49a3699f36ba0c27bb7243e8c97f49cb5be427f253d60c19a953898fe473109c", size = 39040, upload-time = "2026-06-09T07:19:13.644Z" },
+    { url = "https://files.pythonhosted.org/packages/37/54/0b957a167f0c3e537001735344b3d60223c7a6e23b23b64b0905830c6728/reydb-1.3.58-py3-none-any.whl", hash = "sha256:cba267a867a46083fbe8db8b71a1739edce4425630390e296881276c1a65b8b7", size = 39046, upload-time = "2026-06-09T07:27:51.618Z" },
 ]
 
 [[package]]
 name = "reykit"
-version = "1.2.59"
+version = "1.2.61"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -2267,12 +2267,12 @@ dependencies = [
     { name = "varname" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/0d/cf3db01c86e953b373b7caa4d258efd01ea74921e67699be1a8b84f9e78a/reykit-1.2.59-py3-none-any.whl", hash = "sha256:a4d13f1b31a27be6435b8d12c096a645d9b0abd538ea0cdc56d2014f4214bc61", size = 74478, upload-time = "2026-05-03T04:34:58.844Z" },
+    { url = "https://files.pythonhosted.org/packages/35/63/c613364955f7060655f1052ec0b61c0b8c9f44e39d516c4ef806ce2084ba/reykit-1.2.61-py3-none-any.whl", hash = "sha256:8d0a278c15a32afdd93bffb8fd36e2078405e1571a6f0dc7c0a677eb23d11a05", size = 74832, upload-time = "2026-06-09T08:41:31.306Z" },
 ]
 
 [[package]]
 name = "reyserver"
-version = "1.1.194"
+version = "1.1.195"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi", extra = ["standard"] },

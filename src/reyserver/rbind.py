@@ -9,7 +9,20 @@
 """
 
 from typing import TypedDict, Literal, overload, TYPE_CHECKING
-from pydantic import EmailStr
+from datetime import (
+    datetime as Datetime,
+    date as Date,
+    time as Time,
+    timedelta as Timedelta
+)
+from pydantic import (
+    EmailStr as Email,
+    IPvAnyAddress as Ip,
+    AnyUrl as Url,
+    HttpUrl,
+    FileUrl,
+    Json
+)
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.params import (
     Depends,
@@ -445,7 +458,7 @@ async def depend_file(
         'size': file_size,
         'path': file_relpath
     }
-    model_data = await (
+    [model_data, ...] = await (
         sess.insert(ServerORMTableFileData)
         .values(data)
         .update('md5', 'md5')
@@ -623,7 +636,16 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     'Type hints upload file type.'
     Depend = Depends
     'Dependency type.'
-    Email= EmailStr
+    Datetime = Datetime
+    Date = Date
+    Time = Time
+    Timedelta = Timedelta
+    Email = Email
+    Ip = Ip
+    Url = Url
+    HttpUrl = HttpUrl
+    FileUrl = FileUrl
+    Json = Json
     Conn = DatabaseConnectionAsync
     Sess = DatabaseORMSessionAsync
     i = ServerBindInstance()
