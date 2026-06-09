@@ -8,11 +8,10 @@
 @Explain : Public methods.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from reykit.ros import File, Folder
 
-from .rbase import exit_api
 from .rbind import Bind
 
 __all__ = (
@@ -81,7 +80,7 @@ async def handle_frontend_route(
         or server.is_started_link
         and path.startswith('l/')
     ):
-        exit_api(404)
+        raise HTTPException(404)
 
     # Parameter.
     public_dir = server.api_public_dir
