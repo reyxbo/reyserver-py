@@ -543,28 +543,6 @@ class Server(ServerBase, Singleton):
         self.add_router(router_auth, prefix=f'{self._prefix}/auth', tags=['auth'])
         self.is_started_auth = True
 
-    def add_api_link(self) -> None:
-        """
-        Add mapping link API.
-        Note: must include database engine of `link` name.
-        """
-
-        from .rlink import build_db_link, router_link, router_link_l
-
-        # Database.
-        if (
-            self.db is None
-            or 'link' not in self.db
-        ):
-            throw(TypeError, self.db)
-        engine = self.db.link
-        build_db_link(engine)
-
-        # Add.
-        self.add_router(router_link, prefix=f'{self._prefix}/links', tags=['link'])
-        self.add_router(router_link_l, tags=['link'])
-        self.is_started_link = True
-
     def add_api_file(
         self,
         file_dir: str = 'file',
@@ -595,5 +573,27 @@ class Server(ServerBase, Singleton):
         self.api_file_download_token_seconds = download_token_seconds
         self.api_file_store = FileStore(file_dir)
         self.add_router(router_file, prefix=f'{self._prefix}/files', tags=['file'])
+
+    def add_api_link(self) -> None:
+        """
+        Add mapping link API.
+        Note: must include database engine of `link` name.
+        """
+
+        from .rlink import build_db_link, router_link, router_link_l
+
+        # Database.
+        if (
+            self.db is None
+            or 'link' not in self.db
+        ):
+            throw(TypeError, self.db)
+        engine = self.db.link
+        build_db_link(engine)
+
+        # Add.
+        self.add_router(router_link, prefix=f'{self._prefix}/links', tags=['link'])
+        self.add_router(router_link_l, tags=['link'])
+        self.is_started_link = True
 
 Bind.Server = Server
