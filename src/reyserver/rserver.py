@@ -119,6 +119,7 @@ class Server(ServerBase, Singleton):
             dependencies=depend,
             lifespan=lifespan,
             server=self,
+            redirect_slashes=True
         )
         self._prefix = prefix or ''
 

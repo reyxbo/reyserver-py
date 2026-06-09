@@ -5,7 +5,7 @@
 @Time    : 2025-10-06
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : File methods. Can create database used "self.build_db" function.
+@Explain : File methods. Can create database used "build_db_file" function.
 """
 
 from typing import Literal
@@ -70,7 +70,7 @@ class ServerORMTableFileInfo(ServerBase, rorm.Table):
 
 def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
-    Check and build "file" database tables.
+    Check and build `file` database tables.
 
     Parameters
     ----------
@@ -112,7 +112,7 @@ def build_db_file(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     ## View stats.
     views_stats = [
         {
-            'table': 'stats',
+            'table': 'stats_file',
             'items': [
                 {
                     'name': 'count',

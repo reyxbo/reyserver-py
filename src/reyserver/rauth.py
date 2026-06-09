@@ -128,10 +128,10 @@ class ServerORMAuthTableUser(ServerBase, rorm.Table):
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record update time.')
     user_id: int = rorm.Field(key_auto=True, comment='User ID.')
-    name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment=f'User name.', len_min=3)
+    name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='User name.', len_min=3)
     password: str = rorm.Field(rorm.types.CHAR(60), not_null=True, comment='User password, encrypted with "bcrypt".', len_min=6)
     email: rorm.Email | None = rorm.Field(rorm.types.VARCHAR(255), index_u=True, comment='User email.')
-    phone: str | None = rorm.Field(rorm.types.CHAR(11), index_u=True, comment=f'User phone.', re=PATTERN_PHONE)
+    phone: str | None = rorm.Field(rorm.types.CHAR(11), index_u=True, comment='User phone.', re=PATTERN_PHONE)
     avatar: int | None = rorm.Field(comment='User avatar file ID.')
     is_valid: bool = rorm.Field(field_default='TRUE', not_null=True, comment='Is the valid.')
 
@@ -233,7 +233,7 @@ class ServerORMTableAuthVerifyPhone(ServerBase, rorm.Table):
     use_time: rorm.Datetime | None = rorm.Field(comment='Use time.')
     expire_time: rorm.Datetime = rorm.Field(not_null=True, index_n=True, comment='Expire time.')
     scene: str = rorm.Field(rorm.types.VARCHAR(20), not_null=True, index_n=True, comment='Usage scene.')
-    phone: str = rorm.Field(rorm.types.CHAR(11), not_null=True, index_n=True, comment=f'Verification phone.', re=PATTERN_PHONE)
+    phone: str = rorm.Field(rorm.types.CHAR(11), not_null=True, index_n=True, comment='Verification phone.', re=PATTERN_PHONE)
     code: str = rorm.Field(rorm.types.VARCHAR(8), not_null=True, index_n=True, comment='Verification code.', len_min=4, len_max=8)
     verify_count: int = rorm.Field(rorm.types.SMALLINT, field_default='0', not_null=True, comment='Verify count.')
     used: bool = rorm.Field(field_default='FALSE', not_null=True, comment='Is the used.')
@@ -243,11 +243,11 @@ class ServerORMModelAuthUserInput(ServerBase, rorm.Model):
     Server authentication input user ORM model.
     """
 
-    name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, comment=f'User name.', len_min=3)
+    name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, comment='User name.', len_min=3)
     password: str = rorm.Field(rorm.types.CHAR(60), not_null=True, comment='User password, encrypted with "bcrypt".', len_min=6)
     email: rorm.Email | None = rorm.Field(rorm.types.VARCHAR(255), comment='User email, must with parameter "email_code".')
     email_code: str | None = rorm.Field(rorm.types.VARCHAR(8), comment='Email verification code.', len_min=4, len_max=8)
-    phone: str | None = rorm.Field(rorm.types.CHAR(11), comment=f'User phone, must with parameter "phone_code".', re=PATTERN_PHONE)
+    phone: str | None = rorm.Field(rorm.types.CHAR(11), comment='User phone, must with parameter "phone_code".', re=PATTERN_PHONE)
     phone_code: str | None = rorm.Field(rorm.types.VARCHAR(8), comment='Phone verification code.', len_min=4, len_max=8)
 
     @rorm.wrap_validate_filed('name')
@@ -271,9 +271,9 @@ class ServerORMModelAuthUserOut(ServerBase, rorm.Model):
     create_time: rorm.Datetime = rorm.Field(not_null=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(not_null=True, comment='Record update time.')
     user_id: int = rorm.Field(not_null=True, comment='User ID.')
-    name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, comment=f'User name.', len_min=3)
+    name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, comment='User name.', len_min=3)
     email: rorm.Email | None = rorm.Field(comment='User email.')
-    phone: str | None = rorm.Field(rorm.types.CHAR(11), comment=f'User phone.', re=PATTERN_PHONE)
+    phone: str | None = rorm.Field(rorm.types.CHAR(11), comment='User phone.', re=PATTERN_PHONE)
     avatar: int | None = rorm.Field(comment='User avatar file ID.')
     is_admin: bool = rorm.Field(not_null=True, comment='Is administrator.')
 
@@ -912,7 +912,7 @@ class ServerAuthVerifyPhone(ServerBase):
 
 def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
-    Check and build "auth" database tables.
+    Check and build `auth` database tables.
 
     Parameters
     ----------
@@ -933,7 +933,7 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     ## View stats.
     views_stats = [
         {
-            'table': 'stats',
+            'table': 'stats_user',
             'items': [
                 {
                     'name': 'user_count',
