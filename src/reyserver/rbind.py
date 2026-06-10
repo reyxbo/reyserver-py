@@ -59,7 +59,7 @@ __all__ = (
     'Bind'
 )
 
-PageParams = TypedDict('PageParams', {'offset': int, 'limit': int, 'with_total': bool})
+PageParams = TypedDict('PageParams', {'offset': int | None, 'limit': int | None, 'with_total': bool})
 
 class ServerBindInstanceDatabaseSuper(ServerBase):
     """
@@ -514,8 +514,8 @@ async def depend_file_info(
     return file_info
 
 async def depend_page(
-    offset: int = Query(0),
-    limit: int = Query(100),
+    offset: int | None = Query(None),
+    limit: int | None = Query(None),
     with_total: bool = Query(False)
 ) -> PageParams:
     """
