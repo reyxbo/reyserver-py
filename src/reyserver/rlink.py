@@ -16,7 +16,7 @@ from reykit.rtime import now
 
 from .rbase import ServerBase, throw, exit_api
 from .rbind import Bind
-from .rcache import wrap_cache
+from .rcache import wrap_cache, expire_cache
 
 __all__ = (
     'ServerORMTableLink',
@@ -35,9 +35,9 @@ class ServerORMTableLink(ServerBase, rorm.Table):
     __comment__ = 'Mapping link table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record update time.')
-    expire_time: rorm.Datetime = rorm.Field(index_n=True, comment='Link expire time.')
+    expire_time: rorm.Datetime | None = rorm.Field(index_n=True, comment='Link expire time.')
     id: int = rorm.Field(key_auto=True, comment='ID.')
-    url: rorm.HttpUrl = rorm.Field(rorm.types.TEXT, not_null=True, index_u=True, comment='Redirect HTTP or HTTPS URL.')
+    url: str = rorm.Field(rorm.types.TEXT, not_null=True, comment='Redirect HTTP or HTTPS URL.')
     user_id: int = rorm.Field(index_n=True, comment='Link owner user ID. When is null, then owner is system.')
 
 class ServerORMTableLinkOut(ServerBase, rorm.Model):
@@ -47,9 +47,9 @@ class ServerORMTableLinkOut(ServerBase, rorm.Model):
 
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
     update_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record update time.')
-    expire_time: rorm.Datetime = rorm.Field(index_n=True, comment='Link expire time.')
+    expire_time: rorm.Datetime | None = rorm.Field(index_n=True, comment='Link expire time.')
     id: int = rorm.Field(key_auto=True, comment='ID.')
-    url: rorm.HttpUrl = rorm.Field(rorm.types.TEXT, not_null=True, index_u=True, comment='Redirect HTTP or HTTPS URL.')
+    url: str = rorm.Field(rorm.types.TEXT, not_null=True, comment='Redirect HTTP or HTTPS URL.')
     user_id: int = rorm.Field(index_n=True, comment='Link owner user ID. When is null, then owner is system.')
     code: str = rorm.Field(not_null=True, comment='Mapping link code.')
 
@@ -142,9 +142,9 @@ async def get_links(
 
     # Parameter.
     if user.is_admin:
-        where = '"expire_time" < NOW()'
+        where = '"expire_time" IS NULL OR "expire_time" > NOW()'
     else:
-        where = f'"user_id" = {user.user_id} AND "expire_time" < NOW()'
+        where = f'"user_id" = {user.user_id} AND ("expire_time" IS NULL OR "expire_time" > NOW())'
 
     # Get.
     models_link = await (
@@ -178,7 +178,7 @@ async def get_links(
 
 @router_link.get('/{code}')
 @router_link_l.get('/l/{code}')
-@wrap_cache
+@wrap_cache(key='code')
 async def map_link(
     code: str = Bind.i.path,
     sess: Bind.Sess = Bind.sess.file
@@ -197,28 +197,31 @@ async def map_link(
 
     # Get.
     link_id = decode_link(code)
-    model_link = await sess.get(ServerORMTableLink, link_id)
+    where = f'"id" = {link_id} AND ("expire_time" IS NULL OR "expire_time" > NOW())'
+    model_links = (
+        await sess.select(ServerORMTableLink)
+        .where(where)
+        .limit(1)
+        .execute()
+    )
 
     # Check.
-    now_time = now()
-    if (
-        model_link is None
-        or model_link.expire_time >= now_time
-    ):
+    if model_links == []:
         exit_api(404)
 
     # Response.
+    model_link, = model_links
     response = RedirectResponse(model_link.url, 308)
 
     return response
 
 @router_link.post('')
 async def create_link(
-    url: Bind.Url = Bind.i.body,
+    url: Bind.HttpUrl = Bind.i.body,
     expire_time: Bind.Datetime | None = Bind.i.body_n,
     user: Bind.User = Bind.user,
     sess: Bind.Sess = Bind.sess.link
-) -> ServerORMTableLink:
+) -> ServerORMTableLinkOut:
     """
     Create mapping link.
 
@@ -235,16 +238,19 @@ async def create_link(
     # Insert.
     data = {
         'expire_time': expire_time,
-        'url': url,
+        'url': str(url),
         'user_id': user.user_id
     }
-    model_link, *_ = await (
+    model_link, = await (
         sess.insert(ServerORMTableLink)
         .values(data)
         .execute_return()
     )
 
-    return model_link
+    # Response.
+    model_link_out = ServerORMTableLinkOut.r_validate(model_link, {'code': encode_link(model_link.id)})
+
+    return model_link_out
 
 @router_link.delete('/{link_id}')
 async def expire_link(
@@ -261,11 +267,10 @@ async def expire_link(
     """
 
     # Update.
-    now_time = now()
-    where = f'"id" = {link_id} AND "user_id" = {user.user_id}'
+    where = f'"id" = {link_id} AND "user_id" = {user.user_id} AND ("expire_time" IS NULL OR "expire_time" > NOW())'
     result = await (
         sess.update(ServerORMTableLink)
-        .values(expire_time=now_time)
+        .values(expire_time=now())
         .where(where)
         .execute()
     )
@@ -273,6 +278,10 @@ async def expire_link(
     # Check.
     if result.empty:
         exit_api(404)
+
+    # Cache.
+    code = encode_link(link_id)
+    await expire_cache(map_link, code=code)
 
 def encode_link(link_id: int) -> str:
     """

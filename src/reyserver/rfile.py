@@ -18,7 +18,7 @@ from reykit.rnet import get_content_type
 
 from .rbase import ServerBase, exit_api
 from .rbind import Bind
-from .rcache import wrap_cache
+from .rcache import wrap_cache, expire_cache
 
 __all__ = (
     'ServerFileVisibleEnum',
@@ -248,7 +248,7 @@ async def get_files(
     return page
 
 @router_file.get('/{file_id}')
-@wrap_cache
+@wrap_cache(key='file_id')
 async def get_file(
     file_id: int = Bind.i.path,
     user: Bind.UserOpt = Bind.user_opt,
@@ -318,9 +318,14 @@ async def delete_file(
 
     ## Information.
     sql_where = f'"file_id" = {file_id}'
-    model_file_info, = await sess.delete(ServerORMTableFileInfo).where(sql_where).execute_return()
+    models = await sess.delete(ServerORMTableFileInfo).where(sql_where).execute_return()
+
+    ## Check.
+    if models == []:
+        exit_api(404)
 
     ## Data.
+    model_file_info, = models
     sql_where = (
         f'"md5" = \'{model_file_info.md5}\'\n'
         '    AND NOT EXISTS (\n'
@@ -334,6 +339,9 @@ async def delete_file(
     ## Storge.
     if models != []:
         server.api_file_store.delete(model_file_info.md5)
+
+    ## Cache.
+    await expire_cache(file_id)
 
 def auth_file_perm(
     visible: Literal['public', 'internal', 'private'],

@@ -29,7 +29,7 @@ from reykit.rrand import randchar
 
 from .rbase import ServerBase
 from .rbind import Bind
-from .rcache import init_cache
+from .rcache import load_cache_version, init_cache
 from . import rauth
 
 __all__ = (
@@ -77,7 +77,7 @@ class Server(ServerBase, Singleton):
         db: DatabaseAsync | None = None,
         db_warm: bool = False,
         redis: Redis | None = None,
-        redis_expire: int | None = None,
+        redis_expire: int | None = 300,
         depend: Callable[[], Coroutine] | Sequence[Callable[[], Coroutine]] | None = None,
         before: Callable[[], Coroutine] | Sequence[Callable[[], Coroutine]] | None = None,
         after: Callable[[], Coroutine] | Sequence[Callable[[], Coroutine]] | None = None,
@@ -263,7 +263,13 @@ class Server(ServerBase, Singleton):
             """
 
             # Before.
-            ...
+            if (
+                (route := request.scope.get('route')) is not None
+                and (endpoint := getattr(route, 'endpoint', None)) is not None
+                and (label := getattr(endpoint, '_key_label', None)) is not None
+            ):
+                label: str
+                await load_cache_version(label)
 
             # Next.
             response = await call_next(request)

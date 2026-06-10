@@ -458,7 +458,7 @@ async def depend_file(
         'size': file_size,
         'path': file_relpath
     }
-    model_data, *_ = await (
+    model_data, = await (
         sess.insert(ServerORMTableFileData)
         .values(data)
         .update('md5', 'md5')

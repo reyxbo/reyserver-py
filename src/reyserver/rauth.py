@@ -22,6 +22,7 @@ from reykit.rtime import now
 
 from .rbase import ServerBase, exit_api
 from .rbind import Bind, depend_file
+from .rcache import wrap_cache, expire_cache
 
 __all__ = (
     'ServerORMAuthTableUser',
@@ -1453,6 +1454,7 @@ async def reset_password(
     await sess.update(ServerORMAuthTableUser).values(password=new_password_hash).where(sql_where).execute()
 
 @router_auth.get('/users/exists')
+@wrap_cache
 async def check_user_exists(
     name: str | None = Bind.Query(None, min_length=3, max_length=50),
     email: str | None = Bind.Query(None, max_length=255),
@@ -1495,6 +1497,7 @@ async def check_user_exists(
     return is_exists
 
 @router_auth.get('/user')
+@wrap_cache(key=lambda _, kwargs: kwargs['user'].user_id)
 async def get_user_info(
     user: Bind.User = Bind.user,
     sess: Bind.Sess = Bind.sess.auth
@@ -1535,6 +1538,10 @@ async def update_user_name(
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(name=new_name).where(sql_where).execute_return()
     model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
+
+    # Cache.
+    await expire_cache(check_user_exists)
+    await expire_cache(get_user_info, user.user_id)
 
     return model_user_out
 
@@ -1606,6 +1613,10 @@ async def update_user_email(
     model_user, = await sess.update(ServerORMAuthTableUser).values(email=new_email).where(sql_where).execute_return()
     model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
 
+    # Cache.
+    await expire_cache(check_user_exists)
+    await expire_cache(get_user_info, user.user_id)
+
     return model_user_out
 
 @router_auth.patch('/user/phone')
@@ -1641,6 +1652,10 @@ async def update_user_phone(
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(phone=new_phone).where(sql_where).execute_return()
     model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
+
+    # Cache.
+    await expire_cache(check_user_exists)
+    await expire_cache(get_user_info, user.user_id)
 
     return model_user_out
 
@@ -1679,6 +1694,9 @@ async def update_user_avatar(
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess_auth.update(ServerORMAuthTableUser).values(avatar=model_file_info.file_id).where(sql_where).execute_return()
     model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
+
+    # Cache.
+    await expire_cache(get_user_info, user.user_id)
 
     return model_user_out
 

@@ -11,6 +11,7 @@
 from typing import Any, overload
 from collections.abc import Callable
 from functools import wraps
+from asyncio import Lock
 from fastapi import Request, Response
 from fastapi_cache import FastAPICache
 from fastapi_cache.coder import PickleCoder
@@ -22,9 +23,39 @@ from reykit.ros import get_md5
 from reykit.rre import sub
 
 __all__ = (
+    'load_cache_version',
     'init_cache',
-    'wrap_cache'
+    'wrap_cache',
+    'get_redis',
+    'get_cache_version',
+    'expire_cache'
 )
+
+_cache_version_dict: dict[str, int] = {}
+_cache_version_lock = Lock()
+
+async def load_cache_version(label: str) -> None:
+    """
+    Loading cache version by label.
+
+    Parameters
+    ----------
+    label : Cache label.
+    """
+
+    # Load.
+    if label in _cache_version_dict:
+        return
+    async with _cache_version_lock:
+        if label in _cache_version_dict:
+            return
+        name = f'version:{label}'
+        redis = get_redis()
+        version = int(
+            await redis.get(name)
+            or 1
+        )
+        _cache_version_dict[label] = version
 
 def init_cache(redis: Redis, redis_expire: int | None = None) -> None:
     """
@@ -57,12 +88,27 @@ def init_cache(redis: Redis, redis_expire: int | None = None) -> None:
         kwargs : Keyword arguments of decorated function.
         """
 
-        # Parameter.
-        data = f'{func.__module__}:{func.__name__}:{args}:{kwargs}'
-        pattern = r' object at 0x[0-9a-fA-F]+>'
-        data = sub(pattern, data, '>')
-
         # Build.
+        if func._key is None:
+            data = f'{func.__module__}:{func.__name__}:{args}:{kwargs}'
+            pattern = r' object at 0x[0-9a-fA-F]+>'
+            data = sub(pattern, data, '>')
+        else:
+            func_key: str | tuple[str] | Callable[[tuple, dict[str, Any]], Any] = func._key
+            if callable(func_key):
+                data = str(func_key(args, kwargs))
+            else:
+                if type(func_key) == str:
+                    func_key = (func_key,)
+                data = ':'.join([
+                    f'{name}={kwargs[name]}'
+                    for name in func_key
+                ])
+                pattern = r' object at 0x[0-9a-fA-F]+>'
+                data = sub(pattern, data, '>')
+        key_label: str = func._key_label
+        version = _cache_version_dict.get(key_label, 1)
+        data = f'{key_label}:{version}:{data}'
         key = get_md5(data)
 
         return key
@@ -77,19 +123,36 @@ def init_cache(redis: Redis, redis_expire: int | None = None) -> None:
     )
 
 @overload
-def wrap_cache(func_or_expire: CallableT) -> CallableT: ...
+def wrap_cache(func: CallableT) -> CallableT: ...
 
 @overload
-def wrap_cache(func_or_expire: int) -> Callable[[CallableT], CallableT]: ...
+def wrap_cache(
+    *,
+    expire: int | None = None,
+    key: str | tuple[str] | Callable[[tuple, dict[str, Any]], Any] | None = None,
+    key_label: str | None = None
+) -> Callable[[CallableT], CallableT]: ...
 
-def wrap_cache(func_or_expire: CallableT | int) -> CallableT | Callable[[CallableT], CallableT]:
+def wrap_cache(
+    func: CallableT | None = None,
+    *,
+    expire: int | None = None,
+    key: str | tuple[str] | Callable[[tuple, dict[str, Any]], Any] | None = None,
+    key_label: str | None = None
+) -> CallableT | Callable[[CallableT], CallableT]:
     """
     Decorator, use Redis cache.
     When Redis is not set, then skip.
 
     Parameters
     ----------
-    func_or_expire : Decorated coroutine function or Redis cache expire seconds.
+    func : Decorated route function.
+    expire : Cache expire seconds.
+    key : Set cache key from arguments.
+        - `str | tuple[str]`: Call keyword argument names of route function, join to cache key.
+        - `Callable[[tuple, dict[str, Any]], str]`: Callback function, enter all positional arguments and keyword arguments, return cache key value.
+    key_label : Set cache label, used for caching version control.
+        - `None`: Use function name.
 
     Returns
     -------
@@ -102,12 +165,12 @@ def wrap_cache(func_or_expire: CallableT | int) -> CallableT | Callable[[Callabl
     >>> def foo(): ...
 
     Set parameter.
-    >>> @wrap_cache(60)
+    >>> @wrap_cache(**kwargs)
     >>> def foo(): ...
     """
 
     # Decorator.
-    def decorator(func, expire):
+    def decorator(func):
 
         # Annotation.
         note_title = 'Notes\n-----'
@@ -119,8 +182,10 @@ def wrap_cache(func_or_expire: CallableT | int) -> CallableT | Callable[[Callabl
         else:
             func.__doc__ += '\n' + note_title + cache_note
 
-        # Tag.
+        # Cache.
         func.__cache__ = True
+        func._key = key
+        func._key_label = key_label or func.__name__
 
         # Decorate.
         cache_decorator = fastapi_cache_cache(expire=expire)
@@ -132,10 +197,92 @@ def wrap_cache(func_or_expire: CallableT | int) -> CallableT | Callable[[Callabl
 
         return wrapper
 
-    ## Function.
-    if callable(func_or_expire):
-        return decorator(func_or_expire, None)
-
     ## Parameter.
+    if func is None:
+        return lambda func: decorator(func)
+
+    ## Function.
     else:
-        return lambda func: decorator(func, func_or_expire)
+        return decorator(func)
+
+def get_redis() -> Redis:
+    """
+    Get redis instance of cache backend.
+
+    Returns
+    -------
+    Redis instance.
+    """
+
+    # Get.
+    backend: RedisBackend = FastAPICache.get_backend()
+    redis: Redis = backend.redis
+
+    return redis
+
+@overload
+async def expire_cache(
+    label: str | Callable
+) -> None: ...
+
+@overload
+async def expire_cache(
+    label: str | Callable,
+    data: Any
+) -> None: ...
+
+@overload
+async def expire_cache(
+    label: str | Callable,
+    **kwargs: Any
+) -> None: ...
+
+async def expire_cache(
+    label: str | Callable,
+    data: Any | None = None,
+    **kwargs: Any
+) -> None:
+    """
+    Expire one cache by label.
+
+    Parameters
+    ----------
+    label : Cache label.
+        - `Callable`: Function name.
+    data : Cache key value.
+    kwargs : Cache keyword arguments, join to cache key.
+    """
+
+    # Parameter.
+    if callable(label):
+        label = label.__name__
+
+    # Expire label.
+    if (
+        data is None
+        and kwargs == {}
+    ):
+        async with _cache_version_lock:
+            _cache_version_dict[label] = _cache_version_dict.get(label, 1) + 1
+            name = f'version:{label}'
+            redis = get_redis()
+            await redis.incrby(name)
+
+    # Expire one key.
+    else:
+        if data is None:
+            data = ':'.join([
+                f'{name}={value}'
+                for name, value in kwargs.items()
+            ])
+            async with _cache_version_lock:
+                version = _cache_version_dict.get(label, 1)
+            pattern = r' object at 0x[0-9a-fA-F]+>'
+            data = sub(pattern, data, '>')
+        else:
+            data = str(data)
+        version = _cache_version_dict.get(label, 1)
+        data = f'{label}:{version}:{data}'
+        key = get_md5(data)
+        redis = get_redis()
+        await redis.delete(key)
