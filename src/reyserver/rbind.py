@@ -379,6 +379,7 @@ async def depend_user_opt(
         f'^{pattern}'
         for pattern in token_data['perm_apis']
     ]
+    print(api_path, perm_apis)
     result = search_batch(api_path, *perm_apis)
     if result is None:
         exit_api(403)

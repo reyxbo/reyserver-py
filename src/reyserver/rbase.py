@@ -43,9 +43,9 @@ class Page(ServerBase, rorm.Model, Generic[T]):
     Response of one page data.
     """
 
-    offset: int = rorm.Field(num_ge=0)
+    offset: int | None = rorm.Field(num_ge=0)
     "Start offset count."
-    limit: int = rorm.Field(num_ge=0)
+    limit: int | None = rorm.Field(num_ge=0)
     "End limit count."
     data: list[T]
     "Data table."
