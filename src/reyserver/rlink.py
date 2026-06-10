@@ -129,7 +129,7 @@ router_link_l = APIRouter()
 async def get_links(
     page_params: Bind.PageParams = Bind.page,
     user: Bind.User = Bind.user,
-    conn: Bind.Conn = Bind.conn.file,
+    conn: Bind.Conn = Bind.conn.link,
     sess: Bind.Sess = Bind.sess.link
 ) -> Bind.Page[ServerORMTableLinkOut]:
     """
@@ -181,7 +181,7 @@ async def get_links(
 @wrap_cache(key='code')
 async def map_link(
     code: str = Bind.i.path,
-    sess: Bind.Sess = Bind.sess.file
+    sess: Bind.Sess = Bind.sess.link
 ) -> RedirectResponse:
     """
     Redirect URL by mapping link.
