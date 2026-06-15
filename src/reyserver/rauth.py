@@ -8,11 +8,12 @@
 @Explain : Authentication methods.
 """
 
-from typing import Any, TypedDict, NotRequired, Literal
+from typing import Any, TypedDict, NotRequired, Literal, overload
 from datetime import datetime as Datetime, timedelta as Timedelta
 from fastapi import APIRouter
 from reyclient.rali import ClientAliVerifySms
 from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
+from reyclient.rali.rverify import AliVerifyLocalPhoneToken
 from reykit.rbase import throw
 from reykit.rdata import encode_jwt, decode_jwt, hash_bcrypt, is_hash_bcrypt
 from reykit.remail import Email
@@ -1182,8 +1183,8 @@ def encode_token(
 
 @router_auth.post('/token')
 async def create_token(
-    grant_type: Literal['password', 'email_code', 'phone_code'] = Bind.i.form,
-    username: str = Bind.Form(max_length=255),
+    grant_type: Literal['password', 'email_code', 'phone_code', 'local_phone'] = Bind.i.form,
+    username: str | None = Bind.Form(None, max_length=255),
     password: str = Bind.i.form,
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
@@ -1197,8 +1198,9 @@ async def create_token(
         - `Literal['password']`: Use `name+password` or `email+password` or `phone+password`.
         - `Literal['email_code']`: Use `email+code`.
         - `Literal['phone_code']`: Use `phone+code`.
+        - `Literal['local_phone']`: Use `token`.
     username : User name or email address or phone number.
-    password : User password or verification code.
+    password : User password or verification code or token.
 
     Returns
     -------
@@ -1206,6 +1208,20 @@ async def create_token(
     """
 
     # Check.
+
+    ## Local phone.
+    if grant_type == 'local_phone':
+        client_local_phone = server.api_auth_client_local_phone
+        if client_local_phone is None:
+            exit_api(404)
+        phone = await client_local_phone.async_get_phone(password)
+        if phone is None:
+            exit_api(401)
+        user_data = await get_user_data(conn, username, 'phone')
+        if user_data is None:
+            exit_api(401)
+    elif username is None:
+        exit_api(422)
 
     ## Name.
     if grant_type == 'password':
@@ -1219,6 +1235,8 @@ async def create_token(
     ## Email.
     elif grant_type == 'email_code':
         client_email = server.api_auth_client_email
+        if client_email is None:
+            exit_api(404)
         result = await client_email.async_verify('login', username, password, True)
         if not result:
             exit_api(401)
@@ -1226,9 +1244,11 @@ async def create_token(
         if user_data is None:
             exit_api(401)
 
-    ## Sms.
+    ## Phone.
     elif grant_type == 'phone_code':
         client_phone = server.api_auth_client_phone
+        if client_phone is None:
+            exit_api(404)
         result = await client_phone.async_verify('login', username, password, True)
         if not result:
             exit_api(401)
@@ -1337,6 +1357,12 @@ async def create_user(
     init_role_id = server.api_auth_init_role_id
     client_email = server.api_auth_client_email
     client_phone = server.api_auth_client_phone
+    if (
+        init_role_id is None
+        or client_email is None
+        or client_phone is None
+    ):
+        exit_api(404)
 
     # Verify.
     if model_user.email is not None:
@@ -1431,6 +1457,8 @@ async def reset_password(
     ## Email.
     if grant_type == 'email_code':
         client_email = server.api_auth_client_email
+        if client_email is None:
+            exit_api(404)
         result = await client_email.async_verify('reset', account, code, True)
         if not result:
             exit_api(401)
@@ -1441,6 +1469,8 @@ async def reset_password(
     ## Sms.
     elif grant_type == 'phone_code':
         client_phone = server.api_auth_client_phone
+        if client_phone is None:
+            exit_api(404)
         result = await client_phone.async_verify('reset', account, code, True)
         if not result:
             exit_api(401)
@@ -1602,6 +1632,8 @@ async def update_user_email(
 
     # Parmeter.
     client_email = server.api_auth_client_email
+    if client_email is None:
+        exit_api(404)
 
     # Check.
     result = await client_email.async_verify('update', new_email, code, True)
@@ -1642,6 +1674,8 @@ async def update_user_phone(
 
     # Parmeter.
     client_phone = server.api_auth_client_phone
+    if client_phone is None:
+        exit_api(404)
 
     # Check.
     result = await client_phone.async_verify('update', new_phone, code, True)
@@ -1718,6 +1752,8 @@ async def send_email_code(
 
     # Parameter.
     client_email = server.api_auth_client_email
+    if client_email is None:
+        exit_api(404)
 
     # Check.
     if scene == 'login':
@@ -1745,7 +1781,9 @@ async def send_phone_code(
     """
 
     # Parameter.
-    client_sms = server.api_auth_client_phone
+    client_phone = server.api_auth_client_phone
+    if client_phone is None:
+        exit_api(404)
 
     # Check.
     if scene == 'login':
@@ -1754,9 +1792,9 @@ async def send_phone_code(
             exit_api(404, text='user phone number not exists')
 
     # Send.
-    await client_sms.async_send(scene, phone)
+    await client_phone.async_send(scene, phone)
 
-@router_auth.post('/email_codes/verify')
+@router_auth.post('/email-codes/verify')
 async def verify_email_code(
     scene: VerificationCodeScenes = Bind.Body(max_length=20),
     email: Bind.Email = Bind.Body(max_length=255),
@@ -1779,13 +1817,15 @@ async def verify_email_code(
 
     # Parmeter.
     client_email = server.api_auth_client_email
+    if client_email is None:
+        exit_api(404)
 
     # Verify.
     result = await client_email.async_verify(scene, email, code)
 
     return result
 
-@router_auth.post('/phone_codes/verify')
+@router_auth.post('/phone-codes/verify')
 async def verify_phone_code(
     scene: VerificationCodeScenes = Bind.Body(max_length=20),
     phone: str = Bind.Body(min_length=11, max_length=11),
@@ -1808,8 +1848,32 @@ async def verify_phone_code(
 
     # Parmeter.
     client_phone = server.api_auth_client_phone
+    if client_phone is None:
+        exit_api(404)
 
     # Verify.
     result = await client_phone.async_verify(scene, phone, code)
 
     return result
+
+@router_auth.post('/local-phone-auths')
+async def create_local_phone_token(
+    server: Bind.Server = Bind.server
+) -> AliVerifyLocalPhoneToken:
+    """
+    Create local phone verification token.
+
+    Returns
+    -------
+    Verification token.
+    """
+
+    # Parameter.
+    client_local_phone = server.api_auth_client_local_phone
+    if client_local_phone is None:
+        exit_api(404)
+
+    # Create.
+    token = await client_local_phone.async_get_auth_token()
+
+    return token
