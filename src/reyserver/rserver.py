@@ -68,8 +68,6 @@ class Server(ServerBase, Singleton):
     'Authentication API client verify email instance.'
     api_auth_client_phone: 'rauth.ServerAuthVerifyPhone | None' = None
     'Authentication API cleint verify phone instance.'
-    api_auth_client_local_phone: ClientAliVerifyLocalPhone | None = None
-    'Authentication API cleint verify local phone instance.'
     api_file_download_token_seconds: int
     'Authentication API file download sign token valid seconds.'
     api_file_store: FileStore
@@ -504,7 +502,6 @@ class Server(ServerBase, Singleton):
         self,
         client_email: 'rauth.ServerAuthVerifyEmail | None' = None,
         client_phone: 'rauth.ServerAuthVerifyPhone | None' = None,
-        client_local_phone: ClientAliVerifyLocalPhone | None = None,
         init_role_id: int | None = None,
         key: str | None = None,
         user_token_seconds: int = 28800, # Default eight hours.
@@ -519,7 +516,6 @@ class Server(ServerBase, Singleton):
         ----------
         client_email : Client verify email instance.
         client_phone : Client verify phone instance.
-        client_local_phone : Cleint verify local phone instance.
         init_role_id : Create user initial role ID.
         key : JWT encryption key.
             - `None`: Random 32 length string.
@@ -546,7 +542,6 @@ class Server(ServerBase, Singleton):
         # Add.
         self.api_auth_client_email = client_email
         self.api_auth_client_phone = client_phone
-        self.api_auth_client_local_phone = client_local_phone
         self.api_auth_init_role_id = init_role_id
         self.api_auth_key = key
         self.api_auth_user_token_seconds = user_token_seconds
