@@ -352,7 +352,7 @@ class ServerAuthVerifyEmail(ServerBase):
             scene=scene
         )
         if is_exists:
-            throw(AssertionError, text='interval time not elapsed')
+            exit_api(429, text='interval time not elapsed')
 
         # Send.
         code = randchar(self.code_len, 'd')
@@ -667,7 +667,7 @@ class ServerAuthVerifyPhone(ServerBase):
             scene=scene
         )
         if is_exists:
-            throw(AssertionError, text='interval time not elapsed')
+            exit_api(429, text='interval time not elapsed')
 
         # Send.
         code = self.client.send(
@@ -714,7 +714,7 @@ class ServerAuthVerifyPhone(ServerBase):
             scene=scene
         )
         if is_exists:
-            throw(AssertionError, text='interval time not elapsed')
+            exit_api(429, text='interval time not elapsed')
 
         # Send.
         code = await self.client.async_send(
