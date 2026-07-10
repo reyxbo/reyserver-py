@@ -75,6 +75,7 @@ class ServerClient(ServerBase):
         # Parameter.
         url = join_url(self.url, self.prefix, 'auth', 'token')
         data = {
+            'grant_type': 'password',
             'username': username,
             'password': password
         }
