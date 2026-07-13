@@ -411,7 +411,7 @@ async def depend_user(
 
 async def depend_file(
     file: UploadFile = Forms(),
-    visible: Literal['public', 'internal', 'private'] = Forms(),
+    visible: Literal['public', 'internal', 'private'] = Forms('private'),
     name: str | None = Forms(None),
     note: str | None = Forms(None),
     user: User | None = Depends(depend_user),

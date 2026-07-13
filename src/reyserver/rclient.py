@@ -137,6 +137,7 @@ class ServerClient(ServerBase):
     def upload_file(
         self,
         source: str | bytes,
+        visible: Literal['public', 'internal', 'private'] = 'private',
         name: str | None = None,
         note: str | None = None
     ) -> int:
