@@ -8,11 +8,11 @@
 @Explain : Client methods.
 """
 
-from typing import TypedDict
+from typing import TypedDict, Literal, overload
 from datetime import datetime as Datetime
 from requests import Response
 from reykit.rbase import copy_type_hints
-from reykit.ros import File, Folder, overload
+from reykit.ros import File, Folder
 from reykit.rnet import join_url, request, get_response_file_name
 
 from .rbase import ServerBase
@@ -21,7 +21,19 @@ __all__ = (
     'ServerClient',
 )
 
-FileInfo = TypedDict('FileInfo', {'create_time': Datetime, 'md5': str, 'name': str | None, 'size': int, 'note': str | None})
+FileInfo = TypedDict(
+    'FileInfo',
+    {
+        'create_time': Datetime,
+        'file_id': int,
+        'user_id': int,
+        'visible': Literal['public', 'internal', 'private'],
+        'md5': str,
+        'size': int,
+        'name': str | None,
+        'note': str | None
+    }
+)
 
 class ServerClient(ServerBase):
     """
@@ -158,7 +170,7 @@ class ServerClient(ServerBase):
 
             ## File bytes.
             case bytes() | bytearray():
-                if type(source) == bytearray:
+                if type(source) is bytearray:
                     source = bytes(source)
                 file_bytes = source
                 file_name = None

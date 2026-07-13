@@ -125,6 +125,50 @@ def build_db_link(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 router_link = APIRouter()
 router_link_l = APIRouter()
 
+def encode_link(link_id: int) -> str:
+    """
+    Encode link ID to link code.
+
+    Parameters
+    ----------
+    code : Link code.
+
+    Returns
+    -------
+    Link code.
+    """
+
+    # Check.
+    if link_id < 1:
+        throw(ValueError, link_id)
+
+    # Encode.
+    code = encode_base62(link_id).rjust(4, '0')
+
+    return code
+
+def decode_link(code: str) -> int:
+    """
+    Decode link code to link ID.
+
+    Parameters
+    ----------
+    link_id : Link code.
+
+    Returns
+    -------
+    Link ID.
+    """
+
+    # Decode.
+    link_id = decode_base62(code)
+
+    # Check.
+    if link_id == 0:
+        throw(ValueError, link_id)
+
+    return link_id
+
 @router_link.get('')
 async def get_links(
     page_params: Bind.PageParams = Bind.page,
@@ -282,47 +326,3 @@ async def expire_link(
     # Cache.
     code = encode_link(link_id)
     await expire_cache(map_link, code=code)
-
-def encode_link(link_id: int) -> str:
-    """
-    Encode link ID to link code.
-
-    Parameters
-    ----------
-    code : Link code.
-
-    Returns
-    -------
-    Link code.
-    """
-
-    # Check.
-    if link_id < 1:
-        throw(ValueError, link_id)
-
-    # Encode.
-    code = encode_base62(link_id).rjust(4, '0')
-
-    return code
-
-def decode_link(code: str) -> int:
-    """
-    Decode link code to link ID.
-
-    Parameters
-    ----------
-    link_id : Link code.
-
-    Returns
-    -------
-    Link ID.
-    """
-
-    # Decode.
-    link_id = decode_base62(code)
-
-    # Check.
-    if link_id == 0:
-        throw(ValueError, link_id)
-
-    return link_id

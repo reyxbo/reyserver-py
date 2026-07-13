@@ -24,7 +24,6 @@ __all__ = (
     'ServerFileVisibleEnum',
     'ServerORMTableFileData',
     'ServerORMTableFileInfo',
-    'ServerORMTableAuthPerm',
     'build_db_file',
     'router_file'
 )
