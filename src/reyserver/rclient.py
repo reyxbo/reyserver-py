@@ -147,6 +147,7 @@ class ServerClient(ServerBase):
         Parameters
         ----------
         source : File path or file bytes.
+        visible : File visible type.
         name : File name.
             - `None`: Automatic set.
                 `parameter 'file' is 'str'`: Use path file name.
@@ -181,7 +182,7 @@ class ServerClient(ServerBase):
             file_name = name
 
         # Request.
-        data = {'name': file_name, 'note': note}
+        data = {'visible': visible, 'name': file_name, 'note': note}
         files = {'file': file_bytes}
         response = self.request(url, data=data, files=files, check=True)
 
