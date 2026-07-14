@@ -284,7 +284,7 @@ class Server(ServerBase, Singleton):
             elif (
                 response.status_code == 200
                 and request.method in ('PUT', 'PATCH', 'DELETE')
-                and getattr(response, 'body', None) == None
+                and getattr(response, 'body', None) is None
             ):
                 endpoint = request.scope.get('endpoint')
                 if (
