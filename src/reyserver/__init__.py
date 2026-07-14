@@ -9,7 +9,7 @@
 
 Modules
 -------
-rall : All methods.
+rall : All import methods.
 rauth : Authentication methods.
 rbase : Base methods.
 rbind : Dependency bind methods.

@@ -98,7 +98,7 @@ def init_cache(redis: Redis, redis_expire: int | None = None) -> None:
             if callable(func_key):
                 data = str(func_key(args, kwargs))
             else:
-                if type(func_key) == str:
+                if type(func_key) is str:
                     func_key = (func_key,)
                 data = ':'.join([
                     f'{name}={kwargs[name]}'

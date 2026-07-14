@@ -367,7 +367,7 @@ class Server(ServerBase, Singleton):
         """
 
         # Parameter.
-        if type(ssl_cert) != type(ssl_key):
+        if type(ssl_cert) is not type(ssl_key):
             throw(AssertionError, ssl_cert, ssl_key)
         if app is None:
             app = self.app
@@ -438,9 +438,9 @@ class Server(ServerBase, Singleton):
         """
 
         # Parameter.
-        if type(origin) == str:
+        if type(origin) is str:
             origin = (origin,)
-        if type(method) == str:
+        if type(method) is str:
             method = (method,)
 
         # Set.
@@ -486,7 +486,9 @@ class Server(ServerBase, Singleton):
         subapp = StaticFiles(directory=self.api_public_dir)
         self.mount('/public', subapp)
         self.add_router(router_public, tags=['public'])
-        self.add_router = lambda *_, **__: throw(AssertionError, text='public API must be added at the end')
+        def add_router_exc(*_, **__):
+            throw(AssertionError, text='public API must be added at the end')
+        self.add_router = add_router_exc
 
     def add_api_test(self) -> None:
         """

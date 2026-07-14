@@ -8,7 +8,7 @@
 @Explain : Authentication methods.
 """
 
-from typing import Any, TypedDict, NotRequired, Literal, overload
+from typing import Any, TypedDict, NotRequired, Literal
 from datetime import datetime as Datetime, timedelta as Timedelta
 from fastapi import APIRouter
 from reyclient.rali import ClientAliVerifySms
@@ -1492,13 +1492,13 @@ async def check_user_exists(
     # Parameter.
     sql_where_parts = []
     kwdata = {}
-    if type(name) == str:
+    if type(name) is str:
         sql_where_parts.append('"name" = :name')
         kwdata['name'] = name
-    if type(email) == str:
+    if type(email) is str:
         sql_where_parts.append('"email" = :email')
         kwdata['email'] = email
-    if type(phone) == str:
+    if type(phone) is str:
         sql_where_parts.append('"phone" = :phone')
         kwdata['phone'] = phone
     if sql_where_parts == []:
