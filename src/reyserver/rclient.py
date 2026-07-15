@@ -116,8 +116,9 @@ class ServerClient(ServerBase):
         # Parameter.
         headers = kwargs.setdefault('headers', {})
         headers['Authorization'] = f'Bearer {self.token}'
-        kwargs['check'] = list(range(200, 400))
-        kwargs['check'].append(401)
+        if kwargs['check'] is True:
+            kwargs['check'] = list(range(200, 400))
+            kwargs['check'].append(401)
 
         # Request.
         response = request(*args, **kwargs)
