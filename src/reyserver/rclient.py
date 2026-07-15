@@ -184,7 +184,7 @@ class ServerClient(ServerBase):
 
         # Request.
         data = {'visible': visible, 'name': file_name, 'note': note}
-        files = {'file': (file_name, file_bytes)}
+        files = {'file': file_bytes}
         response = self.request(url, data=data, files=files, check=True)
 
         ## Extract.

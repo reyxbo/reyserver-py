@@ -441,8 +441,6 @@ async def depend_file(
     file_bytes = await file.read()
     file_md5 = get_md5(file_bytes)
     file_size = len(file_bytes)
-    if name is None:
-        name = file.filename
     user_id = user and user.user_id
 
     # Upload.
