@@ -24,6 +24,7 @@ __all__ = (
     'ServerFileVisibleEnum',
     'ServerORMTableFileData',
     'ServerORMTableFileInfo',
+    'ServerORMTableFileInfoOut',
     'build_db_file',
     'router_file'
 )
@@ -58,6 +59,20 @@ class ServerORMTableFileInfo(ServerBase, rorm.Table):
 
     __name__ = 'info'
     __comment__ = 'File information table.'
+    create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
+    file_id: int = rorm.Field(key_auto=True, comment='File ID.')
+    user_id: int = rorm.Field(index_n=True, comment='File owner user ID. When is null, then owner is system.')
+    visible: ServerFileVisibleEnum = rorm.Field(rorm.ENUM(ServerFileVisibleEnum), not_null=True, index_n=True, comment='File visible type.')
+    md5: str = rorm.Field(rorm.types.CHAR(32), key_foreign=(ServerORMTableFileData.__tablename__, 'md5'), not_null=True, index_n=True, comment='File MD5.')
+    size: int = rorm.Field(not_null=True, comment='File bytes size.')
+    name: str | None = rorm.Field(rorm.types.VARCHAR(260), index_n=True, comment='File name.')
+    note: str | None = rorm.Field(rorm.types.VARCHAR(500), comment='File note.')
+
+class ServerORMTableFileInfoOut(ServerBase, rorm.Model):
+    """
+    Server file information out ORM model.
+    """
+
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
     file_id: int = rorm.Field(key_auto=True, comment='File ID.')
     user_id: int = rorm.Field(index_n=True, comment='File owner user ID. When is null, then owner is system.')
@@ -203,7 +218,7 @@ async def get_files(
     user: Bind.UserOpt = Bind.user_opt,
     conn: Bind.Conn = Bind.conn.file,
     sess: Bind.Sess = Bind.sess.file
-) -> Bind.Page[ServerORMTableFileInfo]:
+) -> Bind.Page[ServerORMTableFileInfoOut]:
     """
     Get file information table.
 
@@ -252,7 +267,7 @@ async def get_file(
     file_id: int = Bind.i.path,
     user: Bind.UserOpt = Bind.user_opt,
     sess: Bind.Sess = Bind.sess.file
-) -> ServerORMTableFileInfo:
+) -> ServerORMTableFileInfoOut:
     """
     Get file information.
 

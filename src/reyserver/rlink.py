@@ -42,7 +42,7 @@ class ServerORMTableLink(ServerBase, rorm.Table):
 
 class ServerORMTableLinkOut(ServerBase, rorm.Model):
     """
-    Server mapping link out information ORM model.
+    Server mapping link information out ORM model.
     """
 
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')

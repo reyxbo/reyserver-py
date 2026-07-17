@@ -266,7 +266,7 @@ class ServerORMModelAuthUserInput(ServerBase, rorm.Model):
 
 class ServerORMModelAuthUserOut(ServerBase, rorm.Model):
     """
-    Server authentication out user ORM model.
+    Server authentication user out ORM model.
     """
 
     create_time: rorm.Datetime = rorm.Field(not_null=True, comment='Record create time.')
