@@ -439,6 +439,7 @@ async def get_file_conetnt(
 
     # Response.
     file_abspath = file_store.get_abspath(params['path'])
+    file_name = params['name'] or 'download'
     media_type = get_content_type(file_abspath)
     content_disposition_type = {
         'download': 'attachment',
@@ -446,7 +447,7 @@ async def get_file_conetnt(
     }[handle]
     response = FileResponse(
         file_abspath,
-        filename=params['name'],
+        filename=file_name,
         media_type=media_type,
         content_disposition_type=content_disposition_type
     )
