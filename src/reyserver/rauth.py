@@ -1041,11 +1041,11 @@ async def get_user_data(
     conn: Asyncronous database connection.
     index : User index.
     index_type : User index type.
-        - "Literal['user_id']: User ID.
-        - "Literal['name']": User name.
-        - "Literal['email']": User email.
-        - "Literal['phone']": User phone mumber.
-        - "Literal['account']": User name or email or phone number.
+        - `Literal['user_id']`: User ID.
+        - `Literal['name']`: User name.
+        - `Literal['email']`: User email.
+        - `Literal['phone']`: User phone mumber.
+        - `Literal['account']`: User name or email or phone number.
     filter_invalid : Whether filter invalid user.
 
     Returns
