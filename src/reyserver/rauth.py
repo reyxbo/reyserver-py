@@ -212,10 +212,10 @@ class ServerORMTableAuthVerifyEmail(ServerBase, rorm.Table):
 
     __name__ = 'verify_email'
     __comment__ = 'Verify email record table.'
-    id: int = rorm.Field(key_auto=True, comment='ID.')
     send_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Send time.')
     use_time: rorm.Datetime | None = rorm.Field(comment='Use time.')
     expire_time: rorm.Datetime = rorm.Field(not_null=True, index_n=True, comment='Expire time.')
+    id: int = rorm.Field(key_auto=True, comment='ID.')
     scene: str = rorm.Field(rorm.types.VARCHAR(20), not_null=True, index_n=True, comment='Usage scene.')
     email: rorm.Email = rorm.Field(not_null=True, index_n=True, comment='Verification email.')
     code: str = rorm.Field(rorm.types.VARCHAR(8), not_null=True, index_n=True, comment='Verification code.', len_min=4, len_max=8)
@@ -229,10 +229,10 @@ class ServerORMTableAuthVerifyPhone(ServerBase, rorm.Table):
 
     __name__ = 'verify_phone'
     __comment__ = 'Verify phone record table.'
-    id: int = rorm.Field(key_auto=True, comment='ID.')
     send_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Send time.')
     use_time: rorm.Datetime | None = rorm.Field(comment='Use time.')
     expire_time: rorm.Datetime = rorm.Field(not_null=True, index_n=True, comment='Expire time.')
+    id: int = rorm.Field(key_auto=True, comment='ID.')
     scene: str = rorm.Field(rorm.types.VARCHAR(20), not_null=True, index_n=True, comment='Usage scene.')
     phone: str = rorm.Field(rorm.types.CHAR(11), not_null=True, index_n=True, comment='Verification phone.', re=PATTERN_PHONE)
     code: str = rorm.Field(rorm.types.VARCHAR(8), not_null=True, index_n=True, comment='Verification code.', len_min=4, len_max=8)
