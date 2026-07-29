@@ -17,7 +17,6 @@ from fastapi_cache.coder import PickleCoder
 from fastapi_cache.backends.redis import RedisBackend
 from fastapi_cache.decorator import cache as fastapi_cache_cache
 from redis.asyncio import Redis
-from reykit.rbase import CallableT
 from reykit.ros import get_md5
 from reykit.rre import sub
 

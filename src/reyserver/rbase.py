@@ -7,11 +7,11 @@
 @Explain : Base methods.
 """
 
-from typing import NoReturn, Generic
+from typing import NoReturn
 from http import HTTPStatus
 from fastapi import HTTPException
 from fastapi.params import Depends
-from reykit.rbase import T, Base, Exit, throw
+from reykit.rbase import Base, Exit, throw
 from reydb import rorm
 
 __all__ = (
@@ -37,7 +37,7 @@ class ServerExitAPI(ServerExit, HTTPException):
     Server exit API type.
     """
 
-class Page(ServerBase, rorm.Model, Generic[T]):
+class Page[T](ServerBase, rorm.Model):
     """
     Response of one page data.
     """
