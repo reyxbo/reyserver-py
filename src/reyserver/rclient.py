@@ -63,8 +63,8 @@ class ServerClient(ServerBase):
         self.password = password
         self.url = url
         self.prefix = prefix
-        self.token = self.get_token(username, password)
         self.request = copy_type_hints(self._request, request)
+        self.token = self.get_token(username, password)
 
     def is_server_active(self) -> bool:
         """
