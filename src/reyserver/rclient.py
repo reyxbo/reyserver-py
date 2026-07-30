@@ -63,7 +63,7 @@ class ServerClient(ServerBase):
         self.password = password
         self.url = url
         self.prefix = prefix
-        self.token = self.get_token(username, password)
+        self._token: str | None = None
         self.auth_request = copy_type_hints(self._auth_request, request)
 
     def is_server_active(self) -> bool:
@@ -103,13 +103,13 @@ class ServerClient(ServerBase):
             _timeout=timeout
         )
 
-    def get_token(
+    def _get_token(
         self,
         username: str,
         password: str
     ) -> str:
         """
-        Get token.
+        Get authorization token.
 
         Parameters
         ----------
@@ -136,6 +136,21 @@ class ServerClient(ServerBase):
         token = response_dict['access_token']
 
         return token
+
+    @property
+    def token(self) -> str:
+        """
+        Authorization token.
+        """
+
+        # Cache.
+        if self._token is not None:
+            return self._token
+
+        # Get.
+        self._token = self._get_token(self.username, self.password)
+
+        return self._token
 
     def _auth_request(self, *args, **kwargs) -> Response:
         """
@@ -166,7 +181,7 @@ class ServerClient(ServerBase):
             return response
 
         # Try request.
-        self.token = self.get_token(self.username, self.password)
+        self.token = self._get_token(self.username, self.password)
         headers['Authorization'] = f'Bearer {self.token}'
         kwargs['check'] = True
         response = self.auth_request(*args, **kwargs)
