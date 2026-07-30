@@ -9,7 +9,7 @@
 
 from typing import TypedDict, Literal, overload
 from datetime import datetime as Datetime
-from requests import Response
+from requests import Response, RequestException
 from reykit.rbase import copy_type_hints
 from reykit.ros import File, Folder
 from reykit.rnet import join_url, request, get_response_file_name
@@ -65,6 +65,28 @@ class ServerClient(ServerBase):
         self.token = self.get_token(username, password)
         self.request = copy_type_hints(self._request, request)
 
+    def is_server_active(self) -> bool:
+        """
+        Is the server active.
+
+        Returns
+        -------
+        Judgement result.
+        """
+
+        # Parameter.
+        url = join_url(self.url, self.prefix, 'test')
+
+        # Request.
+        try:
+            self.request(url, check=True)
+        except RequestException:
+            result = False
+        else:
+            result = True
+
+        return result
+
     def get_token(
         self,
         username: str,
@@ -92,7 +114,7 @@ class ServerClient(ServerBase):
         }
 
         # Request.
-        response = request(url, data=data, check=True)
+        response = self.request(url, data=data, check=True)
         response_dict = response.json()
         token = response_dict['access_token']
 
@@ -120,7 +142,7 @@ class ServerClient(ServerBase):
             kwargs['check'].append(401)
 
         # Request.
-        response = request(*args, **kwargs)
+        response = self.request(*args, **kwargs)
 
         # Check.
         if response.status_code != 401:
@@ -130,7 +152,7 @@ class ServerClient(ServerBase):
         self.token = self.get_token(self.username, self.password)
         headers['Authorization'] = f'Bearer {self.token}'
         kwargs['check'] = True
-        response = request(*args, **kwargs)
+        response = self.request(*args, **kwargs)
 
         return response
 
