@@ -66,43 +66,6 @@ class ServerClient(ServerBase):
         self.token = self.get_token(username, password)
         self.request = copy_type_hints(self._request, request)
 
-    def is_server_active(self) -> bool:
-        """
-        Is the server active.
-
-        Returns
-        -------
-        Judgement result.
-        """
-
-        # Parameter.
-        url = join_url(self.url, self.prefix, 'test')
-
-        # Request.
-        try:
-            self.request(url, timeout=3, check=True)
-        except RequestException:
-            result = False
-        else:
-            result = True
-
-        return result
-
-    def wait_server_active(self, timeout: float | None) -> None:
-        """
-        Block threading wait server to active.
-
-        Parameters
-        ----------
-        timeout : Wait timeout seconds, when timeout, then throw exception.
-        """
-
-        # Wait.
-        wait(
-            self.is_server_active,
-            _timeout=timeout
-        )
-
     def get_token(
         self,
         username: str,
@@ -130,7 +93,8 @@ class ServerClient(ServerBase):
         }
 
         # Request.
-        response = self._request(url, data=data, check=True)
+        check = list(range(200, 400)) + [401]
+        response = request(url, data=data, check=check)
         response_dict = response.json()
         token = response_dict['access_token']
 
@@ -171,6 +135,43 @@ class ServerClient(ServerBase):
         response = self.request(*args, **kwargs)
 
         return response
+
+    def is_server_active(self) -> bool:
+        """
+        Is the server active.
+
+        Returns
+        -------
+        Judgement result.
+        """
+
+        # Parameter.
+        url = join_url(self.url, self.prefix, 'test')
+
+        # Request.
+        try:
+            self.request(url, timeout=3, check=True)
+        except RequestException:
+            result = False
+        else:
+            result = True
+
+        return result
+
+    def wait_server_active(self, timeout: float | None) -> None:
+        """
+        Block threading wait server to active.
+
+        Parameters
+        ----------
+        timeout : Wait timeout seconds, when timeout, then throw exception.
+        """
+
+        # Wait.
+        wait(
+            self.is_server_active,
+            _timeout=timeout
+        )
 
     def upload_file(
         self,
