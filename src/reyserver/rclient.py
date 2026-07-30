@@ -63,8 +63,8 @@ class ServerClient(ServerBase):
         self.password = password
         self.url = url
         self.prefix = prefix
-        self.request = copy_type_hints(self._request, request)
         self.token = self.get_token(username, password)
+        self.request = copy_type_hints(self._request, request)
 
     def is_server_active(self) -> bool:
         """
@@ -130,7 +130,7 @@ class ServerClient(ServerBase):
         }
 
         # Request.
-        response = self.request(url, data=data, check=True)
+        response = self._request(url, data=data, check=True)
         response_dict = response.json()
         token = response_dict['access_token']
 
