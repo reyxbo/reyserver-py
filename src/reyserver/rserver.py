@@ -22,7 +22,6 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi_cache import FastAPICache
 from redis.asyncio import Redis
 from reydb import DatabaseAsync
-from reyclient.rali.rverify import ClientAliVerifyLocalPhone
 from reykit.rbase import Singleton, throw
 from reykit.ros import FileStore
 from reykit.rrand import randchar

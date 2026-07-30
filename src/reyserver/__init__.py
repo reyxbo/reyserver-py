@@ -21,4 +21,4 @@ rserver : Server methods.
 rtest : Test methods.
 """
 
-from .rserver import Server
+from .rserver import Server as Server

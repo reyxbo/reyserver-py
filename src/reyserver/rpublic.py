@@ -54,8 +54,6 @@ async def download_public_file(path: str = Bind.i.path) -> FileResponse:
     File.
     """
 
-    pass
-
 @router_public.get("/{path:path}")
 async def handle_frontend_route(
     path: str = Bind.i.path,

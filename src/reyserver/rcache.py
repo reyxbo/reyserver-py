@@ -25,7 +25,6 @@ __all__ = (
     'init_cache',
     'wrap_cache',
     'get_redis',
-    'get_cache_version',
     'expire_cache'
 )
 
@@ -121,17 +120,17 @@ def init_cache(redis: Redis, redis_expire: int | None = None) -> None:
     )
 
 @overload
-def wrap_cache(func: CallableT) -> CallableT: ...
+def wrap_cache[CallableT: Callable](func: CallableT) -> CallableT: ...
 
 @overload
-def wrap_cache(
+def wrap_cache[CallableT: Callable](
     *,
     expire: int | None = None,
     key: str | tuple[str] | Callable[[tuple, dict[str, Any]], Any] | None = None,
     key_label: str | None = None
 ) -> Callable[[CallableT], CallableT]: ...
 
-def wrap_cache(
+def wrap_cache[CallableT: Callable](
     func: CallableT | None = None,
     *,
     expire: int | None = None,
