@@ -64,7 +64,44 @@ class ServerClient(ServerBase):
         self.url = url
         self.prefix = prefix
         self.token = self.get_token(username, password)
-        self.request = copy_type_hints(self._request, request)
+        self.auth_request = copy_type_hints(self._auth_request, request)
+
+    def is_server_active(self) -> bool:
+        """
+        Is the server active.
+
+        Returns
+        -------
+        Judgement result.
+        """
+
+        # Parameter.
+        url = join_url(self.url, self.prefix, 'test')
+
+        # Request.
+        try:
+            request(url, timeout=3, check=True)
+        except RequestException:
+            result = False
+        else:
+            result = True
+
+        return result
+
+    def wait_server_active(self, timeout: float | None) -> None:
+        """
+        Block threading wait server to active.
+
+        Parameters
+        ----------
+        timeout : Wait timeout seconds, when timeout, then throw exception.
+        """
+
+        # Wait.
+        wait(
+            self.is_server_active,
+            _timeout=timeout
+        )
 
     def get_token(
         self,
@@ -100,9 +137,9 @@ class ServerClient(ServerBase):
 
         return token
 
-    def _request(self, *args, **kwargs) -> Response:
+    def _auth_request(self, *args, **kwargs) -> Response:
         """
-        Send request.
+        Send request with authorization.
 
         Parameters
         ----------
@@ -122,7 +159,7 @@ class ServerClient(ServerBase):
             kwargs['check'].append(401)
 
         # Request.
-        response = self.request(*args, **kwargs)
+        response = self.auth_request(*args, **kwargs)
 
         # Check.
         if response.status_code != 401:
@@ -132,46 +169,9 @@ class ServerClient(ServerBase):
         self.token = self.get_token(self.username, self.password)
         headers['Authorization'] = f'Bearer {self.token}'
         kwargs['check'] = True
-        response = self.request(*args, **kwargs)
+        response = self.auth_request(*args, **kwargs)
 
         return response
-
-    def is_server_active(self) -> bool:
-        """
-        Is the server active.
-
-        Returns
-        -------
-        Judgement result.
-        """
-
-        # Parameter.
-        url = join_url(self.url, self.prefix, 'test')
-
-        # Request.
-        try:
-            self.request(url, timeout=3, check=True)
-        except RequestException:
-            result = False
-        else:
-            result = True
-
-        return result
-
-    def wait_server_active(self, timeout: float | None) -> None:
-        """
-        Block threading wait server to active.
-
-        Parameters
-        ----------
-        timeout : Wait timeout seconds, when timeout, then throw exception.
-        """
-
-        # Wait.
-        wait(
-            self.is_server_active,
-            _timeout=timeout
-        )
 
     def upload_file(
         self,
@@ -223,7 +223,7 @@ class ServerClient(ServerBase):
         # Request.
         data = {'visible': visible, 'name': file_name, 'note': note}
         files = {'file': file_bytes}
-        response = self.request(url, data=data, files=files, check=True)
+        response = self.auth_request(url, data=data, files=files, check=True)
 
         ## Extract.
         response_json = response.json()
@@ -271,7 +271,7 @@ class ServerClient(ServerBase):
         url = join_url(self.url, self.prefix, 'files', file_id, 'content')
 
         # Request.
-        response = self.request(url, check=True)
+        response = self.auth_request(url, check=True)
         file_bytes = response.content
 
         # Not save.
@@ -308,7 +308,7 @@ class ServerClient(ServerBase):
         url = join_url(self.url, self.prefix, 'files', file_id)
 
         # Request.
-        response = self.request(url, check=True)
+        response = self.auth_request(url, check=True)
         response_dict = response.json()
 
         return response_dict
