@@ -11,8 +11,9 @@ from typing import TypedDict, Literal, overload
 from datetime import datetime as Datetime
 from requests import Response, RequestException
 from reykit.rbase import copy_type_hints
-from reykit.ros import File, Folder
 from reykit.rnet import join_url, request, get_response_file_name
+from reykit.ros import File, Folder
+from reykit.rtime import wait
 
 from .rbase import ServerBase
 
@@ -79,13 +80,28 @@ class ServerClient(ServerBase):
 
         # Request.
         try:
-            self.request(url, check=True)
+            self.request(url, timeout=3, check=True)
         except RequestException:
             result = False
         else:
             result = True
 
         return result
+
+    def wait_server_active(self, timeout: float | None) -> None:
+        """
+        Block threading wait server to active.
+
+        Parameters
+        ----------
+        timeout : Wait timeout seconds, when timeout, then throw exception.
+        """
+
+        # Wait.
+        wait(
+            self.is_server_active,
+            _timeout=timeout
+        )
 
     def get_token(
         self,
