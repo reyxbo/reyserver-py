@@ -88,7 +88,7 @@ class ServerClient(ServerBase):
 
         return result
 
-    def wait_server_active(self, timeout: float | None) -> None:
+    def wait_server_active(self, timeout: float | None = None) -> None:
         """
         Block threading wait server to active.
 
