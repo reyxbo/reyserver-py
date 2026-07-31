@@ -92,32 +92,32 @@ async def test_ping() -> int:
 
 @router_test.post('/upload')
 async def test_upload(
-    file: Bind.UploadFile = Bind.Forms()
-) -> None:
+    request: Bind.Request
+) -> int:
     """
     Test upload. Maximum limit 1 GB and 10 seconds.
 
-    Parameters
-    ----------
-    file : File instance.
+    Returns
+    -------
+    Upload bytes count.
     """
 
     # Parameter.
     max_size = 1024 * 1024 * 1024
-    each_size = 1024 * 1024
     count_size = 0
-    timeout_s = 60
+    timeout_s = 10
     tm = TimeMark()
 
     # Upload.
-    while True:
+    async for chunk in request.stream():
+        count_size += len(chunk)
         tm()
         if tm.total_spend >= timeout_s:
             exit_api(408)
-        data = await file.read(each_size)
-        count_size += len(data)
         if count_size >= max_size:
             exit_api(413)
+
+    return count_size
 
 @router_test.get('/download')
 async def test_download(
