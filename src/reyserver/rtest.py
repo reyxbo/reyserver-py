@@ -74,21 +74,6 @@ async def test_wait(second: float = Bind.Query(1, gt=0, le=10)) -> Literal['test
 
     return response
 
-@router_test.get('/ping')
-async def test_ping() -> int:
-    """
-    Test server time.
-
-    Returns
-    -------
-    Server time.
-    """
-
-    # Sleep.
-    timestamp = now('timestamp')
-
-    return timestamp
-
 @router_test.websocket('/upload')
 async def test_upload(
     websocket: Bind.WebSocket
