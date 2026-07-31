@@ -94,11 +94,11 @@ async def test_upload(
     websocket: Bind.WebSocket
 ) -> None:
     """
-    Test upload, websocket connection of receive bytes data. Maximum limit 1 GB and 10 seconds.
+    Test upload, websocket connection of receive bytes data. Maximum limit 3.125 GB and 10 seconds.
     """
 
     # Parameter.
-    max_size = 1024 * 1024 * 1024
+    max_size = 3.125 * 1024 * 1024 * 1024
     count_size = 0
     timeout_s = 10
     tm = TimeMark()
