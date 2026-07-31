@@ -22,7 +22,7 @@ from pydantic import (
     FileUrl,
     Json
 )
-from fastapi import FastAPI, Request, UploadFile
+from fastapi import FastAPI, Request, UploadFile, WebSocket
 from fastapi.params import (
     Depends,
     Path,
@@ -631,6 +631,8 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     'Request body multiple forms parameter dependency type.'
     UploadFile = UploadFile
     'Type hints upload file type.'
+    WebSocket = WebSocket
+    'Type hints WebSocket connection type.'
     Depend = Depends
     'Dependency type.'
     Datetime = Datetime

@@ -8,7 +8,7 @@
 """
 
 from typing import Literal
-from fastapi import APIRouter
+from fastapi import APIRouter, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from reykit.rtask import async_sleep
 from reykit.rtime import now, TimeMark
@@ -90,16 +90,12 @@ async def test_ping() -> int:
 
     return timestamp
 
-@router_test.post('/upload')
+@router_test.websocket('/upload')
 async def test_upload(
-    request: Bind.Request
-) -> int:
+    websocket = Bind.WebSocket
+) -> None:
     """
-    Test upload. Maximum limit 1 GB and 10 seconds.
-
-    Returns
-    -------
-    Upload bytes count.
+    Test upload, websocket connection of receive bytes data. Maximum limit 1 GB and 10 seconds.
     """
 
     # Parameter.
@@ -109,15 +105,25 @@ async def test_upload(
     tm = TimeMark()
 
     # Upload.
-    async for chunk in request.stream():
+    await websocket.accept()
+    while True:
+        try:
+            chunk = await websocket.receive_bytes()
+        except WebSocketDisconnect:
+            break
         count_size += len(chunk)
         tm()
-        if tm.total_spend >= timeout_s:
-            exit_api(408)
-        if count_size >= max_size:
-            exit_api(413)
+        if (
+            tm.total_spend >= timeout_s
+            or count_size >= max_size
+        ):
+            await websocket.close()
 
-    return count_size
+@router_test.get("/upload")
+async def test_upload_websocket() -> None:
+    """
+    Test upload, websocket connection of receive bytes data. Maximum limit 1 GB and 10 seconds.
+    """
 
 @router_test.get('/download')
 async def test_download(
