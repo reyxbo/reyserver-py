@@ -14,7 +14,6 @@ from reykit.rtask import async_sleep
 from reykit.rtime import now, TimeMark
 
 from .rbind import Bind
-from .rbase import exit_api
 
 __all__ = (
     'router_test',
