@@ -92,7 +92,7 @@ async def test_ping() -> int:
 
 @router_test.websocket('/upload')
 async def test_upload(
-    websocket = Bind.WebSocket
+    websocket: Bind.WebSocket
 ) -> None:
     """
     Test upload, websocket connection of receive bytes data. Maximum limit 1 GB and 10 seconds.
