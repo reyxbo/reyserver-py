@@ -111,6 +111,7 @@ async def test_upload(
         except WebSocketDisconnect:
             break
         count_size += len(chunk)
+        del chunk
         tm()
         if (
             tm.total_spend >= timeout_s
