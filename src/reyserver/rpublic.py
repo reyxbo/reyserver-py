@@ -7,15 +7,18 @@
 @Explain : Public methods.
 """
 
+from collections.abc import Sequence
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, FileResponse
 from reykit.rbase import throw
 from reykit.ros import File, Folder
 
+from .rbase import exit_api
 from .rbind import Bind
 
 __all__ = (
     'router_public',
+    'add_frontend_route'
 )
 
 router_public = APIRouter()
@@ -54,38 +57,39 @@ async def download_public_file(path: str = Bind.i.path) -> FileResponse:
     File.
     """
 
-@router_public.get("/{path:path}")
-async def handle_frontend_route(
-    path: str = Bind.i.path,
-    server: Bind.Server = Bind.server
-) -> HTMLResponse:
+def add_frontend_route(paths: Sequence[str]) -> None:
     """
-    Handle frontend static route mapping.
+    Add and map frontend static route.
 
     Parameters
     ----------
-    path : Full path.
-
-    Returns
-    -------
-    Home page HTML content.
+    paths : Route path.
     """
 
-    # Check.
-    if (
-        server._prefix
-        and path.startswith(server._prefix[1:] + '/')
-        or server.is_started_link
-        and path.startswith('l/')
-    ):
-        throw(AssertionError, path, text='unexpectedly matched to other routes')
+    # Add.
+    for path in paths:
+        @router_public.get(path, include_in_schema=False)
+        async def mapping_frontend_route(
+            server: Bind.Server = Bind.server
+        ) -> HTMLResponse:
+            """
+            Mapping frontend static route.
 
-    # Parameter.
-    public_dir = server.api_public_dir
-    file_path = Folder(public_dir) + 'index.html'
-    file = File(file_path)
+            Parameters
+            ----------
+            path : Route path.
 
-    # Response.
-    response = HTMLResponse(file.str)
+            Returns
+            -------
+            Home page HTML content.
+            """
 
-    return response
+            # Parameter.
+            public_dir = server.api_public_dir
+            file_path = Folder(public_dir) + 'index.html'
+            file = File(file_path)
+
+            # Response.
+            response = HTMLResponse(file.str)
+
+            return response

@@ -464,7 +464,11 @@ class Server(ServerBase, Singleton):
         self.api_redirect_server_url = server_url
         self.add_router(router_redirect, prefix=self._prefix, tags=['redirect'])
 
-    def add_api_public(self, public_dir: str) -> None:
+    def add_api_public(
+        self,
+        public_dir: str,
+        paths: Sequence[str] | None = None
+    ) -> None:
         """
         Add public API,
         mapping `{public_dir}/index.html` to `GET /`,
@@ -474,15 +478,18 @@ class Server(ServerBase, Singleton):
         Parameters
         ----------
         public_dir : Public directory.
+        paths : Paths of add and map frontend static route, mapping `{public_dir}/index.html` to `GET `/{path}`.
         """
 
-        from .rpublic import router_public
+        from .rpublic import router_public, add_frontend_route
 
         # Add.
         self.is_added_public = True
         self.api_public_dir = public_dir
         subapp = StaticFiles(directory=self.api_public_dir)
         self.mount('/public', subapp)
+        if paths is not None:
+            add_frontend_route(paths)
         self.add_router(router_public, tags=['public'])
         def add_router_exc(*_, **__):
             throw(AssertionError, text='public API must be added at the end')
