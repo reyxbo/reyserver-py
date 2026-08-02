@@ -120,6 +120,7 @@ async def test_upload(
             or count_size >= max_size
         ):
             await websocket.close()
+            break
 
 @router_test.get("/upload")
 async def test_upload_websocket() -> None:
