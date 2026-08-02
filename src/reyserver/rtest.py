@@ -11,7 +11,7 @@ from typing import Literal
 from fastapi import APIRouter, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from reykit.rtask import async_sleep
-from reykit.rtime import now, TimeMark
+from reykit.rtime import TimeMark
 
 from .rbind import Bind
 
@@ -73,6 +73,23 @@ async def test_wait(second: float = Bind.Query(1, gt=0, le=10)) -> Literal['test
     response = 'test'
 
     return response
+
+@router_test.get('/ip')
+async def test_ip(
+    request: Bind.Request
+) -> str:
+    """
+    Test IP address of client.
+
+    Returns
+    -------
+    IP address of client.
+    """
+
+    # Get.
+    ip = request.client.host
+
+    return ip
 
 @router_test.websocket('/upload')
 async def test_upload(
