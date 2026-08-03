@@ -109,7 +109,7 @@ async def test_upload(
 ) -> None:
     """
     Test upload, websocket connection of receive bytes data. Maximum limit 3.125 GB and 10 seconds.
-    First receive `{'s': float}` setting total seconds, value range is (0-10], loop receive `bytes` and send statistics parameters.
+    First receive `{'total_s': float}` setting total seconds, value range is (0-10], loop receive `bytes` and send statistics parameters.
     """
 
     # Parameter.
@@ -126,10 +126,10 @@ async def test_upload(
     ## Set.
     try:
         setting = await websocket.receive_json()
-        s = setting['s']
+        total_s = setting['total_s']
     except WebSocketDisconnect:
         return
-    if not 0 < s <= max_s:
+    if not 0 < total_s <= max_s:
         await websocket.close()
         return
 
@@ -146,7 +146,7 @@ async def test_upload(
 
         ## Break.
         if (
-            spent_s >= s
+            spent_s >= total_s
             or count_size >= max_size
         ):
             try:
@@ -154,7 +154,7 @@ async def test_upload(
                     {
                         'spent_s': spent_s,
                         'count_size': count_size,
-                        'progress': min(spent_s / s, 1),
+                        'progress': min(spent_s / total_s, 1),
                         'mbps': count_size * 8 / 1_000_000 / spent_s,
                         'done': True
                     }
@@ -171,7 +171,7 @@ async def test_upload(
                     {
                         'spent_s': spent_s,
                         'count_size': count_size,
-                        'progress': min(spent_s / s, 1),
+                        'progress': min(spent_s / total_s, 1),
                         'mbps': count_size * 8 / 1_000_000 / spent_s,
                         'done': False
                     }
@@ -185,7 +185,7 @@ async def test_upload_websocket() -> TestUploadReceiveParameters:
     """
     For document only.
     Test upload, websocket connection of receive bytes data. Maximum limit 1 GB and 10 seconds.
-    First receive `{'s': float}` setting total seconds, value range is (0-10], loop receive `bytes` and send statistics parameters.
+    First receive `{'total_s': float}` setting total seconds, value range is (0-10], loop receive `bytes` and send statistics parameters.
 
     Returns
     -------
@@ -197,14 +197,14 @@ async def test_upload_websocket() -> TestUploadReceiveParameters:
 
 @router_test.get('/download')
 async def test_download(
-    s: float = Bind.Query(5, gt=0, le=10)
+    total_s: float = Bind.Query(5, gt=0, le=10)
 ) -> StreamingResponse:
     """
     Test download.
 
     Parameters
     ----------
-    s : Download seconds, value range is (0-10].
+    total_s : Download seconds, value range is (0-10].
 
     Returns
     -------
@@ -220,7 +220,7 @@ async def test_download(
         tm = TimeMark()
         while True:
             tm()
-            if tm.total_spend >= s:
+            if tm.total_spend >= total_s:
                 break
             yield chunk
             await async_sleep(0)
