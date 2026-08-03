@@ -224,6 +224,9 @@ async def test_download(
                 break
             yield chunk
             await async_sleep(0)
-    response = StreamingResponse(generator())
+    response = StreamingResponse(
+        generator(),
+        headers={'Cache-Control': 'no-store'}
+    )
 
     return response
