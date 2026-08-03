@@ -119,11 +119,9 @@ async def test_upload(
     last_total_spend = 0
     tm = TimeMark()
 
-    # Upload.
+    # Connect.
     await websocket.accept()
     while True:
-
-        ## Receive.
         try:
             chunk = await websocket.receive_bytes()
         except WebSocketDisconnect:
