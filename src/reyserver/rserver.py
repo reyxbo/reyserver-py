@@ -7,7 +7,7 @@
 @Explain : Server methods.
 """
 
-from typing import Literal, overload
+from typing import Literal, Final, overload
 from collections.abc import Sequence, Callable, Coroutine
 from inspect import iscoroutinefunction
 from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
@@ -17,7 +17,6 @@ from fastapi import FastAPI, Request
 from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi_cache import FastAPICache
 from redis.asyncio import Redis
@@ -26,7 +25,7 @@ from reykit.rbase import Singleton, throw
 from reykit.ros import FileStore
 from reykit.rrand import randchar
 
-from .rbase import ServerBase
+from .rbase import ServerBase, GZipMiddleware
 from .rbind import Bind
 from .rcache import load_cache_version, init_cache
 from . import rauth
@@ -140,8 +139,9 @@ class Server(ServerBase, Singleton):
         self.add_router = self.app.include_router
 
         # Middleware
-        'Decorator, add middleware to APP.'
-        self.app.add_middleware(GZipMiddleware)
+        self.gzip_filter_paths: Final[list[str]] = []
+        "GZip middleware filter paths, match format is `f'{methods} {path}'.lower()`"
+        self.app.add_middleware(GZipMiddleware, filter_paths=self.gzip_filter_paths)
         self.app.add_middleware(TrustedHostMiddleware)
         self.__add_base_middleware()
 
@@ -503,7 +503,9 @@ class Server(ServerBase, Singleton):
         from .rtest import router_test
 
         # Add.
-        self.add_router(router_test, prefix=f'{self._prefix}/test', tags=['test'])
+        prefix = f'{self._prefix}/test'
+        self.gzip_filter_paths.append(f'get {prefix}/download')
+        self.add_router(router_test, prefix=prefix, tags=['test'])
 
     def add_api_auth(
         self,

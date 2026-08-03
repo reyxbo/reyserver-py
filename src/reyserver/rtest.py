@@ -213,7 +213,7 @@ async def test_download(
 
     # Parameter.
     each_size = 256 * 1024
-    chunk = b'0' * each_size
+    chunk = b'01234567' * int(each_size / 8)
 
     # Download.
     async def generator():
