@@ -7,7 +7,7 @@
 @Explain : Test methods.
 """
 
-from typing import Literal
+from typing import TypedDict, Literal
 from fastapi import APIRouter, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from reykit.rtask import async_sleep
@@ -18,6 +18,15 @@ from .rbind import Bind
 
 __all__ = (
     'router_test',
+)
+
+TestUploadReceiveParameters = TypedDict(
+    'TestUploadSend',
+    {
+        'count_size': int,
+        'mbps': float,
+        'done': bool
+    }
 )
 
 router_test = APIRouter()
@@ -127,17 +136,35 @@ async def test_upload(
             total_spend >= timeout_s
             or count_size >= max_size
         ):
-            await websocket.send_json(count_size)
+            try:
+                await websocket.send_json(
+                    {
+                        'count_size': count_size,
+                        'mbps': count_size * 8 / 1_000_000 / total_spend,
+                        'done': True
+                    }
+                )
+            except WebSocketDisconnect:
+                break
             await websocket.close()
             break
 
         ## Send.
         if total_spend - last_total_spend >= interval_s:
-            await websocket.send_json(count_size)
+            try:
+                await websocket.send_json(
+                    {
+                        'count_size': count_size,
+                        'mbps': count_size * 8 / 1_000_000 / total_spend,
+                        'done': False
+                    }
+                )
+            except WebSocketDisconnect:
+                break
             last_total_spend = total_spend
 
 @router_test.get("/upload")
-async def test_upload_websocket() -> int:
+async def test_upload_websocket() -> TestUploadReceiveParameters:
     """
     For document only.
     Test upload, websocket connection of receive bytes data. Maximum limit 1 GB and 10 seconds.
@@ -148,7 +175,7 @@ async def test_upload_websocket() -> int:
 
     Returns
     -------
-    Send bytes count size.
+    Send test upload receive statistics parameters.
     """
 
     # Connot use.
