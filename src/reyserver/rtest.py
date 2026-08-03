@@ -129,18 +129,19 @@ async def test_upload(
         count_size += len(chunk)
         del chunk
         tm()
-        total_spend = tm.total_spend
+        spent_s = tm.total_spend
 
         ## Break.
         if (
-            total_spend >= timeout_s
+            spent_s >= timeout_s
             or count_size >= max_size
         ):
             try:
                 await websocket.send_json(
                     {
+                        'spent_s': spent_s,
                         'count_size': count_size,
-                        'mbps': count_size * 8 / 1_000_000 / total_spend,
+                        'mbps': count_size * 8 / 1_000_000 / spent_s,
                         'done': True
                     }
                 )
@@ -150,18 +151,19 @@ async def test_upload(
             break
 
         ## Send.
-        if total_spend - last_total_spend >= interval_s:
+        if spent_s - last_total_spend >= interval_s:
             try:
                 await websocket.send_json(
                     {
+                        'spent_s': spent_s,
                         'count_size': count_size,
-                        'mbps': count_size * 8 / 1_000_000 / total_spend,
+                        'mbps': count_size * 8 / 1_000_000 / spent_s,
                         'done': False
                     }
                 )
             except WebSocketDisconnect:
                 break
-            last_total_spend = total_spend
+            last_total_spend = spent_s
 
 @router_test.get("/upload")
 async def test_upload_websocket() -> TestUploadReceiveParameters:
