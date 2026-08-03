@@ -109,18 +109,31 @@ async def test_upload(
 ) -> None:
     """
     Test upload, websocket connection of receive bytes data. Maximum limit 3.125 GB and 10 seconds.
+    First receive `{'s': float}` setting total seconds, value range is (0-10], loop receive `bytes` and send statistics parameters.
     """
 
     # Parameter.
     max_size = int(3.125 * 1024 * 1024 * 1024)
     count_size = 0
-    timeout_s = 10
+    max_s = 10
     interval_s = 0.1
     last_total_spend = 0
     tm = TimeMark()
 
     # Connect.
     await websocket.accept()
+
+    ## Set.
+    try:
+        setting = await websocket.receive_json()
+        s = setting['s']
+    except WebSocketDisconnect:
+        return
+    if not 0 < s <= max_s:
+        await websocket.close()
+        return
+
+    ## Receive.
     while True:
         try:
             chunk = await websocket.receive_bytes()
@@ -133,7 +146,7 @@ async def test_upload(
 
         ## Break.
         if (
-            spent_s >= timeout_s
+            spent_s >= s
             or count_size >= max_size
         ):
             try:
@@ -141,7 +154,7 @@ async def test_upload(
                     {
                         'spent_s': spent_s,
                         'count_size': count_size,
-                        'progress': min(spent_s / timeout_s, 1),
+                        'progress': min(spent_s / s, 1),
                         'mbps': count_size * 8 / 1_000_000 / spent_s,
                         'done': True
                     }
@@ -158,7 +171,7 @@ async def test_upload(
                     {
                         'spent_s': spent_s,
                         'count_size': count_size,
-                        'progress': min(spent_s / timeout_s, 1),
+                        'progress': min(spent_s / s, 1),
                         'mbps': count_size * 8 / 1_000_000 / spent_s,
                         'done': False
                     }
@@ -172,14 +185,11 @@ async def test_upload_websocket() -> TestUploadReceiveParameters:
     """
     For document only.
     Test upload, websocket connection of receive bytes data. Maximum limit 1 GB and 10 seconds.
-
-    Parameters
-    ----------
-    receive : Byets data.
+    First receive `{'s': float}` setting total seconds, value range is (0-10], loop receive `bytes` and send statistics parameters.
 
     Returns
     -------
-    Send test upload receive statistics parameters.
+    Send statistics parameters.
     """
 
     # Connot use.
@@ -194,11 +204,15 @@ async def test_download(
 
     Parameters
     ----------
-    s : Download seconds, value range is (0-10).
+    s : Download seconds, value range is (0-10].
+
+    Returns
+    -------
+    Bytes data.
     """
 
     # Parameter.
-    each_size = 1024 * 1024
+    each_size = 256 * 1024
     chunk = b'0' * each_size
 
     # Download.
@@ -209,6 +223,7 @@ async def test_download(
             if tm.total_spend >= s:
                 break
             yield chunk
+            await async_sleep(0)
     response = StreamingResponse(generator())
 
     return response
