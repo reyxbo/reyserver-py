@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from reykit.rtask import async_sleep
 from reykit.rtime import TimeMark
 
+from .rbase import exit_api
 from .rbind import Bind
 
 __all__ = (
@@ -100,14 +101,18 @@ async def test_upload(
     """
 
     # Parameter.
-    max_size = 3.125 * 1024 * 1024 * 1024
+    max_size = int(3.125 * 1024 * 1024 * 1024)
     count_size = 0
     timeout_s = 10
+    interval_s = 0.1
+    last_total_spend = 0
     tm = TimeMark()
 
     # Upload.
     await websocket.accept()
     while True:
+
+        ## Receive.
         try:
             chunk = await websocket.receive_bytes()
         except WebSocketDisconnect:
@@ -115,18 +120,39 @@ async def test_upload(
         count_size += len(chunk)
         del chunk
         tm()
+        total_spend = tm.total_spend
+
+        ## Break.
         if (
-            tm.total_spend >= timeout_s
+            total_spend >= timeout_s
             or count_size >= max_size
         ):
+            await websocket.send_json(count_size)
             await websocket.close()
             break
 
+        ## Send.
+        if total_spend - last_total_spend >= interval_s:
+            await websocket.send_json(count_size)
+            last_total_spend = total_spend
+
 @router_test.get("/upload")
-async def test_upload_websocket() -> None:
+async def test_upload_websocket() -> int:
     """
+    For document only.
     Test upload, websocket connection of receive bytes data. Maximum limit 1 GB and 10 seconds.
+
+    Parameters
+    ----------
+    receive : Byets data.
+
+    Returns
+    -------
+    Send bytes count size.
     """
+
+    # Connot use.
+    exit_api(404)
 
 @router_test.get('/download')
 async def test_download(
