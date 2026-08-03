@@ -23,7 +23,9 @@ __all__ = (
 TestUploadReceiveParameters = TypedDict(
     'TestUploadSend',
     {
+        'spent_s': float,
         'count_size': int,
+        'progress': float,
         'mbps': float,
         'done': bool
     }
@@ -141,6 +143,7 @@ async def test_upload(
                     {
                         'spent_s': spent_s,
                         'count_size': count_size,
+                        'progress': min(spent_s / timeout_s, 1),
                         'mbps': count_size * 8 / 1_000_000 / spent_s,
                         'done': True
                     }
@@ -157,6 +160,7 @@ async def test_upload(
                     {
                         'spent_s': spent_s,
                         'count_size': count_size,
+                        'progress': min(spent_s / timeout_s, 1),
                         'mbps': count_size * 8 / 1_000_000 / spent_s,
                         'done': False
                     }
@@ -165,7 +169,7 @@ async def test_upload(
                 break
             last_total_spend = spent_s
 
-@router_test.get("/upload")
+@router_test.get('/upload')
 async def test_upload_websocket() -> TestUploadReceiveParameters:
     """
     For document only.
