@@ -174,7 +174,7 @@ class ServerClient(ServerBase):
             kwargs['check'].append(401)
 
         # Request.
-        response = self.auth_request(*args, **kwargs)
+        response = request(*args, **kwargs)
 
         # Check.
         if response.status_code != 401:
