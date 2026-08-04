@@ -33,7 +33,7 @@ class ServerORMTableLink(ServerBase, rorm.Table):
     __name__ = 'link'
     __comment__ = 'Mapping link table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
-    update_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record update time.')
+    update_time: rorm.Datetime = rorm.Field(field_default=':time', arg_default=now, not_null=True, index_n=True, comment='Record update time.')
     expire_time: rorm.Datetime | None = rorm.Field(index_n=True, comment='Link expire time.')
     id: int = rorm.Field(key_auto=True, comment='ID.')
     url: str = rorm.Field(rorm.types.TEXT, not_null=True, comment='Redirect HTTP or HTTPS URL.')
@@ -45,8 +45,8 @@ class ServerORMTableLinkOut(ServerBase, rorm.Model):
     """
 
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
-    update_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record update time.')
-    expire_time: rorm.Datetime | None = rorm.Field(index_n=True, comment='Link expire time.')
+    update_time: rorm.Datetime = rorm.Field(not_null=True, comment='Record update time.')
+    expire_time: rorm.Datetime | None = rorm.Field(comment='Link expire time.')
     id: int = rorm.Field(key_auto=True, comment='ID.')
     url: str = rorm.Field(rorm.types.TEXT, not_null=True, comment='Redirect HTTP or HTTPS URL.')
     user_id: int = rorm.Field(index_n=True, comment='Link owner user ID. When is null, then owner is system.')

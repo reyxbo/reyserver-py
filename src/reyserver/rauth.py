@@ -126,7 +126,7 @@ class ServerORMAuthTableUser(ServerBase, rorm.Table):
     __name__ = 'user'
     __comment__ = 'User information table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
-    update_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record update time.')
+    update_time: rorm.Datetime = rorm.Field(field_default=':time', arg_default=now, not_null=True, index_n=True, comment='Record update time.')
     user_id: int = rorm.Field(key_auto=True, comment='User ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='User name.', len_min=3)
     password: str = rorm.Field(rorm.types.CHAR(60), not_null=True, comment='User password, encrypted with "bcrypt".', len_min=6)
