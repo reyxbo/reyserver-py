@@ -279,45 +279,45 @@ def build_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     ## View stats.
     views_stats = [
         {
-        'table': 'stats_verify',
-        'items': [
-            {
-                'name': 'count',
-                'select': (
-                    'SELECT COUNT(1)\n'
-                    'FROM "verify"'
-                ),
-                'comment': 'Send count.'
-            },
-            {
-                'name': 'past_day_count',
-                'select': (
-                    'SELECT COUNT(1)\n'
-                    'FROM "verify"'
-                    'WHERE DATE_PART(\'day\', NOW() - "send_time") = 0'
-                ),
-                'comment': 'Send count in the past day.'
-            },
-            {
-                'name': 'past_week_count',
-                'select': (
-                    'SELECT COUNT(1)\n'
-                    'FROM "verify"'
-                    'WHERE DATE_PART(\'day\', NOW() - "send_time") <= 6'
-                ),
-                'comment': 'Send count in the past week.'
-            },
-            {
-                'name': 'past_month_count',
-                'select': (
-                    'SELECT COUNT(1)\n'
-                    'FROM "verify"'
-                    'WHERE DATE_PART(\'day\', NOW() - "send_time") <= 29'
-                ),
-                'comment': 'Send count in the past month.'
-            }
-        ]
-    }
+            'table': 'stats_verify',
+            'items': [
+                {
+                    'name': 'count',
+                    'select': (
+                        'SELECT COUNT(1)\n'
+                        'FROM "verify"'
+                    ),
+                    'comment': 'Send count.'
+                },
+                {
+                    'name': 'past_day_count',
+                    'select': (
+                        'SELECT COUNT(1)\n'
+                        'FROM "verify"'
+                        'WHERE DATE_PART(\'day\', NOW() - "send_time") = 0'
+                    ),
+                    'comment': 'Send count in the past day.'
+                },
+                {
+                    'name': 'past_week_count',
+                    'select': (
+                        'SELECT COUNT(1)\n'
+                        'FROM "verify"'
+                        'WHERE DATE_PART(\'day\', NOW() - "send_time") <= 6'
+                    ),
+                    'comment': 'Send count in the past week.'
+                },
+                {
+                    'name': 'past_month_count',
+                    'select': (
+                        'SELECT COUNT(1)\n'
+                        'FROM "verify"'
+                        'WHERE DATE_PART(\'day\', NOW() - "send_time") <= 29'
+                    ),
+                    'comment': 'Send count in the past month.'
+                }
+            ]
+        }
     ]
 
     # Build.
