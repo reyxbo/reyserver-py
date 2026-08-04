@@ -29,7 +29,8 @@ __all__ = (
     'ServerORMTableAuthPerm',
     'ServerORMAuthTableAuthUserRole',
     'ServerORMTableAuthRolePerm',
-    'ServerORMTableAuthVerifyEmail',
+    'ServerORMTableAuthVerify',
+    'ServerORMModelAuthUserInput',
     'ServerORMModelAuthUserOut',
     'ServerAuthVerifyEmail',
     'build_db_auth',
@@ -204,36 +205,20 @@ class ServerORMTableAuthRolePerm(ServerBase, rorm.Table):
     role_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Role ID.')
     perm_id: int = rorm.Field(rorm.types.SMALLINT, key=True, comment='Permission ID.')
 
-class ServerORMTableAuthVerifyEmail(ServerBase, rorm.Table):
+class ServerORMTableAuthVerify(ServerBase, rorm.Table):
     """
-    Server authentication `verify_email` table ORM model.
+    Server authentication `verify` table ORM model.
     """
 
-    __name__ = 'verify_email'
-    __comment__ = 'Verify email record table.'
+    __name__ = 'verify'
+    __comment__ = 'Verify record table.'
     send_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Send time.')
     use_time: rorm.Datetime | None = rorm.Field(comment='Use time.')
     expire_time: rorm.Datetime = rorm.Field(not_null=True, index_n=True, comment='Expire time.')
     id: int = rorm.Field(key_auto=True, comment='ID.')
     scene: str = rorm.Field(rorm.types.VARCHAR(20), not_null=True, index_n=True, comment='Usage scene.')
-    email: rorm.Email = rorm.Field(not_null=True, index_n=True, comment='Verification email.')
-    code: str = rorm.Field(rorm.types.VARCHAR(8), not_null=True, index_n=True, comment='Verification code.', len_min=4, len_max=8)
-    verify_count: int = rorm.Field(rorm.types.SMALLINT, field_default='0', not_null=True, comment='Verify count.')
-    used: bool = rorm.Field(field_default='FALSE', not_null=True, comment='Is the used.')
-
-class ServerORMTableAuthVerifyPhone(ServerBase, rorm.Table):
-    """
-    Server authentication `verify_phone` table ORM model.
-    """
-
-    __name__ = 'verify_phone'
-    __comment__ = 'Verify phone record table.'
-    send_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Send time.')
-    use_time: rorm.Datetime | None = rorm.Field(comment='Use time.')
-    expire_time: rorm.Datetime = rorm.Field(not_null=True, index_n=True, comment='Expire time.')
-    id: int = rorm.Field(key_auto=True, comment='ID.')
-    scene: str = rorm.Field(rorm.types.VARCHAR(20), not_null=True, index_n=True, comment='Usage scene.')
-    phone: str = rorm.Field(rorm.types.CHAR(11), not_null=True, index_n=True, comment='Verification phone.', re=PATTERN_PHONE)
+    account_type: str = rorm.Field(rorm.types.VARCHAR(20), not_null=True, index_n=True, comment='Verification account type.')
+    account: str = rorm.Field(rorm.types.VARCHAR(100), not_null=True, index_n=True, comment='Verification account.')
     code: str = rorm.Field(rorm.types.VARCHAR(8), not_null=True, index_n=True, comment='Verification code.', len_min=4, len_max=8)
     verify_count: int = rorm.Field(rorm.types.SMALLINT, field_default='0', not_null=True, comment='Verify count.')
     used: bool = rorm.Field(field_default='FALSE', not_null=True, comment='Is the used.')
@@ -276,6 +261,67 @@ class ServerORMModelAuthUserOut(ServerBase, rorm.Model):
     phone: str | None = rorm.Field(rorm.types.CHAR(11), comment='User phone.', re=PATTERN_PHONE)
     avatar: int | None = rorm.Field(comment='User avatar file ID.')
     is_admin: bool = rorm.Field(not_null=True, comment='Is administrator.')
+
+def build_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
+    """
+    Check and build database tables.
+
+    Parameters
+    ----------
+    engine: Asynchronous database engine.
+    """
+
+    # Parameter.
+
+    ## Table.
+    tables = [ServerORMTableAuthVerify]
+
+    ## View stats.
+    views_stats = [
+        {
+        'table': 'stats_verify',
+        'items': [
+            {
+                'name': 'count',
+                'select': (
+                    'SELECT COUNT(1)\n'
+                    'FROM "verify"'
+                ),
+                'comment': 'Send count.'
+            },
+            {
+                'name': 'past_day_count',
+                'select': (
+                    'SELECT COUNT(1)\n'
+                    'FROM "verify"'
+                    'WHERE DATE_PART(\'day\', NOW() - "send_time") = 0'
+                ),
+                'comment': 'Send count in the past day.'
+            },
+            {
+                'name': 'past_week_count',
+                'select': (
+                    'SELECT COUNT(1)\n'
+                    'FROM "verify"'
+                    'WHERE DATE_PART(\'day\', NOW() - "send_time") <= 6'
+                ),
+                'comment': 'Send count in the past week.'
+            },
+            {
+                'name': 'past_month_count',
+                'select': (
+                    'SELECT COUNT(1)\n'
+                    'FROM "verify"'
+                    'WHERE DATE_PART(\'day\', NOW() - "send_time") <= 29'
+                ),
+                'comment': 'Send count in the past month.'
+            }
+        ]
+    }
+    ]
+
+    # Build.
+    engine.sync_engine.build(tables=tables, views_stats=views_stats, skip=True)
 
 class ServerAuthVerifyEmail(ServerBase):
     """
@@ -341,12 +387,13 @@ class ServerAuthVerifyEmail(ServerBase):
 
         # Check.
         sql_where = (
-            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "email" = :email AND "scene" = :scene'
+            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
         )
         is_exists = db_engine.execute.exist(
-            'verify_email',
+            'verify',
             sql_where,
-            email=email,
+            account_type='email',
+            account=email,
             scene=scene
         )
         if is_exists:
@@ -365,10 +412,11 @@ class ServerAuthVerifyEmail(ServerBase):
         data = {
             'expire_time': now('datetime') + Timedelta(minutes=self.valid_m),
             'scene': scene,
-            'email': email,
+            'account_type': 'email',
+            'account': email,
             'code': code
         }
-        db_engine.execute.insert('verify_email', data)
+        db_engine.execute.insert('verify', data)
 
         return code
 
@@ -391,12 +439,13 @@ class ServerAuthVerifyEmail(ServerBase):
 
         # Check.
         sql_where = (
-            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "email" = :email AND "scene" = :scene'
+            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
         )
         is_exists = await db_engine.execute.exist(
-            'verify_email',
+            'verify',
             sql_where,
-            email=email,
+            account_type='email',
+            account=email,
             scene=scene
         )
         if is_exists:
@@ -415,10 +464,11 @@ class ServerAuthVerifyEmail(ServerBase):
         data = {
             'expire_time': now('datetime') + Timedelta(minutes=self.valid_m),
             'scene': scene,
-            'email': email,
+            'account_type': 'email',
+            'account': email,
             'code': code
         }
-        await db_engine.execute.insert('verify_email', data)
+        await db_engine.execute.insert('verify', data)
 
         return code
 
@@ -447,19 +497,21 @@ class ServerAuthVerifyEmail(ServerBase):
                 '(\n'
                 '    "expire_time" > NOW()\n'
                 '    AND "used" = FALSE\n'
-                '    AND "email" = :email\n'
+                '    AND "account_type" = :account_type\n'
+                '    AND "account" = :account\n'
                 '    AND "scene" = :scene\n'
                 '    AND "verify_count" <= :max_attempts\n'
                 ')\n'
             )
             sql_order = '"send_time" DESC'
             result = conn.execute.select(
-                'verify_email',
+                'verify',
                 ('id', 'code', 'verify_count'),
                 sql_where,
                 order=sql_order,
                 limit=1,
-                email=email,
+                account_type='email',
+                account=email,
                 scene=scene,
                 max_attempts=self.max_attempts
             )
@@ -474,13 +526,13 @@ class ServerAuthVerifyEmail(ServerBase):
             if correct_code == code:
                 if use:
                     data = {'id': verify_id, 'verify_count': verify_count + 1, 'used': True}
-                    conn.execute.update('verify_email', data, use_time=':NOW()')
+                    conn.execute.update('verify', data, use_time=':NOW()')
                 return True
 
             # Fail.
             else:
                 data = {'id': verify_id, 'verify_count': verify_count + 1}
-                conn.execute.update('verify_email', data)
+                conn.execute.update('verify', data)
                 return False
 
     async def async_verify(self, scene: VerificationCodeScenes, email: str, code: str, use: bool = False) -> bool:
@@ -508,19 +560,21 @@ class ServerAuthVerifyEmail(ServerBase):
                 '(\n'
                 '    "expire_time" > NOW()\n'
                 '    AND "used" = FALSE\n'
-                '    AND "email" = :email\n'
+                '    AND "account_type" = :account_type\n'
+                '    AND "account" = :account\n'
                 '    AND "scene" = :scene\n'
                 '    AND "verify_count" <= :max_attempts\n'
                 ')\n'
             )
             sql_order = '"send_time" DESC'
             result = await conn.execute.select(
-                'verify_email',
+                'verify',
                 ('id', 'code', 'verify_count'),
                 sql_where,
                 order=sql_order,
                 limit=1,
-                email=email,
+                account_type='email',
+                account=email,
                 scene=scene,
                 max_attempts=self.max_attempts
             )
@@ -535,13 +589,13 @@ class ServerAuthVerifyEmail(ServerBase):
             if correct_code == code:
                 if use:
                     data = {'id': verify_id, 'verify_count': verify_count + 1, 'used': True}
-                    await conn.execute.update('verify_email', data, use_time= ':NOW()')
+                    await conn.execute.update('verify', data, use_time= ':NOW()')
                 return True
 
             # Fail.
             else:
                 data = {'id': verify_id, 'verify_count': verify_count + 1}
-                await conn.execute.update('verify_email', data)
+                await conn.execute.update('verify', data)
                 return False
 
     def build_db(self) -> None:
@@ -549,57 +603,8 @@ class ServerAuthVerifyEmail(ServerBase):
         Check and build database tables.
         """
 
-        # Parameter.
-
-        ## Table.
-        tables = [ServerORMTableAuthVerifyEmail]
-
-        ## View stats.
-        views_stats = [
-            {
-            'table': 'stats_verify_email',
-            'items': [
-                {
-                    'name': 'count',
-                    'select': (
-                        'SELECT COUNT(1)\n'
-                        'FROM "verify_email"'
-                    ),
-                    'comment': 'Send count.'
-                },
-                {
-                    'name': 'past_day_count',
-                    'select': (
-                        'SELECT COUNT(1)\n'
-                        'FROM "verify_email"'
-                        'WHERE DATE_PART(\'day\', NOW() - "send_time") = 0'
-                    ),
-                    'comment': 'Send count in the past day.'
-                },
-                {
-                    'name': 'past_week_count',
-                    'select': (
-                        'SELECT COUNT(1)\n'
-                        'FROM "verify_email"'
-                        'WHERE DATE_PART(\'day\', NOW() - "send_time") <= 6'
-                    ),
-                    'comment': 'Send count in the past week.'
-                },
-                {
-                    'name': 'past_month_count',
-                    'select': (
-                        'SELECT COUNT(1)\n'
-                        'FROM "verify_email"'
-                        'WHERE DATE_PART(\'day\', NOW() - "send_time") <= 29'
-                    ),
-                    'comment': 'Send count in the past month.'
-                }
-            ]
-        }
-        ]
-
         # Build.
-        self.db_engine.sync_engine.build(tables=tables, views_stats=views_stats, skip=True)
+        build_db(self.db_engine)
 
 class ServerAuthVerifyPhone(ServerBase):
     """
@@ -656,12 +661,13 @@ class ServerAuthVerifyPhone(ServerBase):
 
         # Check.
         sql_where = (
-            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "phone" = :phone AND "scene" = :scene'
+            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
         )
         is_exists = db_engine.execute.exist(
-            'verify_phone',
+            'verify',
             sql_where,
-            phone=phone,
+            account_type='phone',
+            account=phone,
             scene=scene
         )
         if is_exists:
@@ -677,10 +683,11 @@ class ServerAuthVerifyPhone(ServerBase):
         data = {
             'expire_time': now('datetime') + Timedelta(minutes=self.valid_m),
             'scene': scene,
-            'phone': phone,
+            'account_type': 'phone',
+            'account': phone,
             'code': code
         }
-        db_engine.execute.insert('verify_phone', data)
+        db_engine.execute.insert('verify', data)
 
         return code
 
@@ -703,12 +710,13 @@ class ServerAuthVerifyPhone(ServerBase):
 
         # Check.
         sql_where = (
-            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "phone" = :phone AND "scene" = :scene'
+            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
         )
         is_exists = await db_engine.execute.exist(
-            'verify_phone',
+            'verify',
             sql_where,
-            phone=phone,
+            account_type='phone',
+            account=phone,
             scene=scene
         )
         if is_exists:
@@ -724,10 +732,11 @@ class ServerAuthVerifyPhone(ServerBase):
         data = {
             'expire_time': now('datetime') + Timedelta(minutes=self.valid_m),
             'scene': scene,
-            'phone': phone,
+            'account_type': 'phone',
+            'account': phone,
             'code': code
         }
-        await db_engine.execute.insert('verify_phone', data)
+        await db_engine.execute.insert('verify', data)
 
         return code
 
@@ -756,19 +765,21 @@ class ServerAuthVerifyPhone(ServerBase):
                 '(\n'
                 '    "expire_time" > NOW()\n'
                 '    AND "used" = FALSE\n'
-                '    AND "phone" = :phone\n'
+                '    AND "account_type" = :account_type\n'
+                '    AND "account" = :account\n'
                 '    AND "scene" = :scene\n'
                 '    AND "verify_count" <= :max_attempts\n'
                 ')\n'
             )
             sql_order = '"send_time" DESC'
             result = conn.execute.select(
-                'verify_phone',
+                'verify',
                 ('id', 'code', 'verify_count'),
                 sql_where,
                 order=sql_order,
                 limit=1,
-                phone=phone,
+                account_type='phone',
+                account=phone,
                 scene=scene,
                 max_attempts=self.max_attempts
             )
@@ -783,13 +794,13 @@ class ServerAuthVerifyPhone(ServerBase):
             if correct_code == code:
                 if use:
                     data = {'id': verify_id, 'verify_count': verify_count + 1, 'used': True}
-                    conn.execute.update('verify_phone', data, use_time=':NOW()')
+                    conn.execute.update('verify', data, use_time=':NOW()')
                 return True
 
             # Fail.
             else:
                 data = {'id': verify_id, 'verify_count': verify_count + 1}
-                conn.execute.update('verify_phone', data)
+                conn.execute.update('verify', data)
                 return False
 
     async def async_verify(self, scene: str, phone: str, code: str, use: bool = False) -> bool:
@@ -817,19 +828,21 @@ class ServerAuthVerifyPhone(ServerBase):
                 '(\n'
                 '    "expire_time" > NOW()\n'
                 '    AND "used" = FALSE\n'
-                '    AND "phone" = :phone\n'
+                '    AND "account_type" = :account_type\n'
+                '    AND "account" = :account\n'
                 '    AND "scene" = :scene\n'
                 '    AND "verify_count" <= :max_attempts\n'
                 ')\n'
             )
             sql_order = '"send_time" DESC'
             result = await conn.execute.select(
-                'verify_phone',
+                'verify',
                 ('id', 'code', 'verify_count'),
                 sql_where,
                 order=sql_order,
                 limit=1,
-                phone=phone,
+                account_type='phone',
+                account=phone,
                 scene=scene,
                 max_attempts=self.max_attempts
             )
@@ -844,13 +857,13 @@ class ServerAuthVerifyPhone(ServerBase):
             if correct_code == code:
                 if use:
                     data = {'id': verify_id, 'verify_count': verify_count + 1, 'used': True}
-                    await conn.execute.update('verify_phone', data, use_time=':NOW()')
+                    await conn.execute.update('verify', data, use_time=':NOW()')
                 return True
 
             # Fail.
             else:
                 data = {'id': verify_id, 'verify_count': verify_count + 1}
-                await conn.execute.update('verify_phone', data)
+                await conn.execute.update('verify', data)
                 return False
 
     def build_db(self) -> None:
@@ -858,57 +871,8 @@ class ServerAuthVerifyPhone(ServerBase):
         Check and build database tables.
         """
 
-        # Parameter.
-
-        ## Table.
-        tables = [ServerORMTableAuthVerifyPhone]
-
-        ## View stats.
-        views_stats = [
-            {
-            'table': 'stats_verify_phone',
-            'items': [
-                {
-                    'name': 'count',
-                    'select': (
-                        'SELECT COUNT(1)\n'
-                        'FROM "verify_phone"'
-                    ),
-                    'comment': 'Send count.'
-                },
-                {
-                    'name': 'past_day_count',
-                    'select': (
-                        'SELECT COUNT(1)\n'
-                        'FROM "verify_phone"'
-                        'WHERE DATE_PART(\'day\', NOW() - "send_time") = 0'
-                    ),
-                    'comment': 'Send count in the past day.'
-                },
-                {
-                    'name': 'past_week_count',
-                    'select': (
-                        'SELECT COUNT(1)\n'
-                        'FROM "verify_phone"'
-                        'WHERE DATE_PART(\'day\', NOW() - "send_time") <= 6'
-                    ),
-                    'comment': 'Send count in the past week.'
-                },
-                {
-                    'name': 'past_month_count',
-                    'select': (
-                        'SELECT COUNT(1)\n'
-                        'FROM "verify_phone"'
-                        'WHERE DATE_PART(\'day\', NOW() - "send_time") <= 29'
-                    ),
-                    'comment': 'Send count in the past month.'
-                }
-            ]
-        }
-        ]
-
         # Build.
-        self.db_engine.sync_engine.build(tables=tables, views_stats=views_stats, skip=True)
+        build_db(self.db_engine)
 
 def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
