@@ -386,9 +386,7 @@ class ServerAuthVerifyEmail(ServerBase):
         db_engine = self.db_engine.sync_engine
 
         # Check.
-        sql_where = (
-            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
-        )
+        sql_where = f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
         is_exists = db_engine.execute.exist(
             'verify',
             sql_where,
@@ -438,9 +436,7 @@ class ServerAuthVerifyEmail(ServerBase):
         db_engine = self.db_engine.async_engine
 
         # Check.
-        sql_where = (
-            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
-        )
+        sql_where = f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
         is_exists = await db_engine.execute.exist(
             'verify',
             sql_where,
@@ -660,9 +656,7 @@ class ServerAuthVerifyPhone(ServerBase):
         db_engine = self.db_engine.sync_engine
 
         # Check.
-        sql_where = (
-            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
-        )
+        sql_where = f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
         is_exists = db_engine.execute.exist(
             'verify',
             sql_where,
@@ -709,9 +703,7 @@ class ServerAuthVerifyPhone(ServerBase):
         db_engine = self.db_engine.async_engine
 
         # Check.
-        sql_where = (
-            f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
-        )
+        sql_where = f'"send_time" > NOW() - interval \'{self.interval_s} second\' AND "account_type" = :account_type AND "account" = :account AND "scene" = :scene'
         is_exists = await db_engine.execute.exist(
             'verify',
             sql_where,
