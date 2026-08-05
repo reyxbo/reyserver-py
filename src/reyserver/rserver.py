@@ -49,10 +49,10 @@ class Server(ServerBase, Singleton):
     'Whether start mapping link.'
     api_public_dir: str
     'Public directory.'
-    api_redirect_server_url: str
-    'Target server URL of redirect all requests.'
     api_auth_key: str
     'JWT encryption key of authentication API.'
+    api_redirect_server_url: str
+    'Target server URL of redirect all requests.'
     api_auth_guest_user_id: int
     'Guest account user ID of authentication API.'
     api_auth_user_token_seconds: int
@@ -513,8 +513,8 @@ class Server(ServerBase, Singleton):
         self,
         client_email: 'rauth.ServerAuthVerifyEmail | None' = None,
         client_phone: 'rauth.ServerAuthVerifyPhone | None' = None,
-        init_role_id: int | None = None,
         key: str | None = None,
+        init_role_id: int | None = None,
         guest_user_id: int | None = None,
         user_token_seconds: int = 3600, # Default 1 hours.
         user_refresh_token_seconds: int = 2592000, # Default 30 day.
@@ -528,9 +528,9 @@ class Server(ServerBase, Singleton):
         ----------
         client_email : Client verify email instance.
         client_phone : Client verify phone instance.
-        init_role_id : Create user initial role ID.
         key : JWT encryption key.
             - `None`: Random 32 length string.
+        init_role_id : Create user initial role ID.
         guest_user_id : Set guest account user ID, and guest routes.
         user_token_seconds : User data token valid seconds.
         user_refresh_token_seconds : User data refresh token valid seconds, same time can refresh self.
@@ -555,8 +555,8 @@ class Server(ServerBase, Singleton):
         # Add.
         self.api_auth_client_email = client_email
         self.api_auth_client_phone = client_phone
-        self.api_auth_init_role_id = init_role_id
         self.api_auth_key = key
+        self.api_auth_init_role_id = init_role_id
         self.api_auth_guest_user_id = guest_user_id
         self.api_auth_user_token_seconds = user_token_seconds
         self.api_auth_user_refresh_token_seconds = user_refresh_token_seconds
