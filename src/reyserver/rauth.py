@@ -1205,14 +1205,14 @@ async def create_token(
         perm_apis=user_data['perm_apis'],
         is_admin=is_admin
     )
-
-    # Response.
     refresh_token = encode_token(
         'user_refresh',
         server.api_auth_key,
         server.api_auth_user_refresh_token_seconds,
         user_data['user_id']
     )
+
+    # Response.
     response: ResponseToken = {
         'access_token': token,
         'refresh_token': refresh_token,
@@ -1353,14 +1353,14 @@ async def create_user(
         perm_apis=user_data['perm_apis'],
         is_admin=is_admin
     )
-
-    # Response.
     refresh_token = encode_token(
         'user_refresh',
         server.api_auth_key,
         server.api_auth_user_refresh_token_seconds,
         user_data['user_id']
     )
+
+    # Response.
     response = {
         'access_token': token,
         'refresh_token': refresh_token,
