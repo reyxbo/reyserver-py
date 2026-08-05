@@ -181,9 +181,8 @@ class ServerClient(ServerBase):
             return response
 
         # Try request.
-        self.token = self._get_token(self.username, self.password)
+        self._token = self._get_token(self.username, self.password)
         headers['Authorization'] = f'Bearer {self.token}'
-        kwargs['check'] = True
         response = self.auth_request(*args, **kwargs)
 
         return response
