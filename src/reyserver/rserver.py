@@ -513,8 +513,8 @@ class Server(ServerBase, Singleton):
         client_phone: 'rauth.ServerAuthVerifyPhone | None' = None,
         init_role_id: int | None = None,
         key: str | None = None,
-        user_token_seconds: int = 28800, # Default eight hours.
-        user_refresh_token_seconds: int = 31536000, # Default one year.
+        user_token_seconds: int = 28800, # Default 8 hours.
+        user_refresh_token_seconds: int = 31536000, # Default 1 year.
         admin_role_name: str = 'admin'
     ) -> None:
         """

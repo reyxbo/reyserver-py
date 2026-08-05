@@ -122,16 +122,16 @@ class ServerClient(ServerBase):
         """
 
         # Parameter.
-        url = join_url(self.url, self.prefix, 'auth', 'token')
+        url = join_url(self.url, self.prefix, 'auth', 'session')
         data = {
-            'grant_type': 'password',
-            'username': username,
-            'password': password
+            'account_type': 'name',
+            'account': username,
+            'verify': password
         }
 
         # Request.
         check = list(range(200, 400)) + [401]
-        response = request(url, data=data, check=check)
+        response = request(url, json=data, check=check)
         response_dict = response.json()
         token = response_dict['access_token']
 

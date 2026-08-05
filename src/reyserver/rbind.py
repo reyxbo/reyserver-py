@@ -33,7 +33,7 @@ from fastapi.params import (
     Form,
     File as Forms
 )
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, OAuth2PasswordBearer, HTTPAuthorizationCredentials
 from reydb.rconn import DatabaseConnectionAsync
 from reydb.rorm import DatabaseORMSessionAsync
 from reykit.rbase import StaticMeta, Singleton, throw
@@ -310,7 +310,13 @@ async def depend_server(request: Request) -> 'Server':
 
     return server
 
-bearer = OAuth2PasswordBearer(
+bearer = HTTPBearer(
+    scheme_name='Bearer',
+    description='Authentication of HTTP Bearer model.',
+    bearerFormat='JWT',
+    auto_error=False
+)
+oauth2_bearer = OAuth2PasswordBearer(
     tokenUrl='/api/auth/token',
     scheme_name='OAuth2Password',
     description='Authentication of OAuth2 password model.',
@@ -338,7 +344,8 @@ class User(ServerBase):
 async def depend_user_opt(
     request: Request,
     server: 'Server' = Depends(depend_server),
-    token: 'Token | None' = Depends(bearer)
+    token: HTTPAuthorizationCredentials | None = Depends(bearer),
+    oauth2_token: 'Token | None' = Depends(oauth2_bearer)
 ) -> User | None:
     """
     Dependencie function of user data instance or null.
@@ -354,6 +361,10 @@ async def depend_user_opt(
     # Check.
     if not server.is_started_auth:
         throw(AssertionError, server.is_started_auth)
+    if token is None:
+        token = oauth2_token
+    else:
+        token = token.credentials
     if token is None:
         return
 

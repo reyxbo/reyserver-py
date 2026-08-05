@@ -1135,11 +1135,11 @@ def encode_token(
 
     return token
 
-@router_auth.post('/token')
+@router_auth.post('/sessions')
 async def create_token(
-    grant_type: Literal['password', 'email_code', 'phone_code'] = Bind.i.form,
-    username: str = Bind.Form(max_length=255),
-    password: str = Bind.i.form,
+    account_type: Literal['name', 'email', 'phone'] = Bind.i.body,
+    account: str = Bind.Body(max_length=255),
+    verify: str = Bind.i.body,
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
 ) -> ResponseToken:
@@ -1148,50 +1148,50 @@ async def create_token(
 
     Parameters
     ----------
-    grant_type : Grant type.
-        - `Literal['password']`: Use `name+password` or `email+password` or `phone+password`.
-        - `Literal['email_code']`: Use `email+code`.
-        - `Literal['phone_code']`: Use `phone+code`.
-    username : User name or email address or phone number.
-    password : User password or verification code.
+    type : Authentication type.
+        - `Literal['name']`: Use `name+password` or `email+password` or `phone+password`.
+        - `Literal['email']`: Use `email+code`.
+        - `Literal['phone']`: Use `phone+code`.
+    account : User name or email address or phone number.
+    verify : User password or verification code.
 
     Returns
     -------
-    JSON with "token".
+    Token data.
     """
 
     # Check.
 
     ## Name.
-    if grant_type == 'password':
-        user_data = await get_user_data(conn, username, 'account')
+    if account_type == 'name':
+        user_data = await get_user_data(conn, account, 'account')
         if (
             user_data is None
-            or not is_hash_bcrypt(password, user_data['password'])
+            or not is_hash_bcrypt(verify, user_data['password'])
         ):
             exit_api(401)
 
     ## Email.
-    elif grant_type == 'email_code':
+    elif account_type == 'email':
         client_email = server.api_auth_client_email
         if client_email is None:
             exit_api(404)
-        result = await client_email.async_verify('login', username, password, True)
+        result = await client_email.async_verify('login', account, verify, True)
         if not result:
             exit_api(401)
-        user_data = await get_user_data(conn, username, 'email')
+        user_data = await get_user_data(conn, account, 'email')
         if user_data is None:
             exit_api(401)
 
     ## Phone.
-    elif grant_type == 'phone_code':
+    elif account_type == 'phone':
         client_phone = server.api_auth_client_phone
         if client_phone is None:
             exit_api(404)
-        result = await client_phone.async_verify('login', username, password, True)
+        result = await client_phone.async_verify('login', account, verify, True)
         if not result:
             exit_api(401)
-        user_data = await get_user_data(conn, username, 'phone')
+        user_data = await get_user_data(conn, account, 'phone')
         if user_data is None:
             exit_api(401)
 
@@ -1221,14 +1221,14 @@ async def create_token(
 
     return response
 
-@router_auth.post('/token/refresh')
+@router_auth.post('/sessions/refresh')
 async def refresh_token(
     refresh_token: str = Bind.i.body_k,
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
 ) -> ResponseToken:
     """
-    Create token.
+    Refresh token.
 
     Parameters
     ----------
@@ -1236,7 +1236,7 @@ async def refresh_token(
 
     Returns
     -------
-    JSON with "token".
+    Token data.
     """
 
     # Decode.
@@ -1262,6 +1262,62 @@ async def refresh_token(
         user_data['user_id'],
         perm_apis=user_data['perm_apis'],
         is_admin=is_admin
+    )
+
+    # Response.
+    response: ResponseToken = {
+        'access_token': token,
+        'refresh_token': refresh_token,
+        'token_type': 'Bearer'
+    }
+
+    return response
+
+@router_auth.post('/token')
+async def create_token_oauth2(
+    grant_type: Literal['password'] = Bind.i.form,
+    username: str = Bind.Form(max_length=50),
+    password: str = Bind.i.form,
+    conn: Bind.Conn = Bind.conn.auth,
+    server: Bind.Server = Bind.server
+) -> ResponseToken:
+    """
+    Create token, comply with OAuth2.
+
+    Parameters
+    ----------
+    grant_type : Grant type.
+    username : User name.
+    password : User password.
+
+    Returns
+    -------
+    Token data.
+    """
+
+    # Check.
+    user_data = await get_user_data(conn, username, 'account')
+    if (
+        user_data is None
+        or not is_hash_bcrypt(password, user_data['password'])
+    ):
+        exit_api(401)
+
+    # Token.
+    is_admin = server.api_auth_admin_role_name in user_data['role_names']
+    token = encode_token(
+        'user',
+        server.api_auth_key,
+        server.api_auth_user_token_seconds,
+        user_data['user_id'],
+        perm_apis=user_data['perm_apis'],
+        is_admin=is_admin
+    )
+    refresh_token = encode_token(
+        'user_refresh',
+        server.api_auth_key,
+        server.api_auth_user_refresh_token_seconds,
+        user_data['user_id']
     )
 
     # Response.
