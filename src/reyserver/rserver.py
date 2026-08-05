@@ -52,23 +52,25 @@ class Server(ServerBase, Singleton):
     api_redirect_server_url: str
     'Target server URL of redirect all requests.'
     api_auth_key: str
-    'Authentication API JWT encryption key.'
+    'JWT encryption key of authentication API.'
+    api_auth_guest_user_id: int
+    'Guest account user ID of authentication API.'
     api_auth_user_token_seconds: int
-    'Authentication API user data token valid seconds.'
+    'User data token valid seconds of authentication API.'
     api_auth_user_refresh_token_seconds: int
-    'Authentication API user data refresh token valid seconds.'
+    'User data refresh token valid seconds of authentication API.'
     api_auth_admin_role_name: str
-    'Authentication API administrator role name.'
+    'Administrator role name of authentication API.'
     api_auth_init_role_id: int | None = None
-    'Authentication API create user initial role ID.'
+    'Create user initial role ID of authentication API.'
     api_auth_client_email: 'rauth.ServerAuthVerifyEmail | None' = None
-    'Authentication API client verify email instance.'
+    'Client verify email instance of authentication API.'
     api_auth_client_phone: 'rauth.ServerAuthVerifyPhone | None' = None
-    'Authentication API cleint verify phone instance.'
+    'Cleint verify phone instance of authentication API.'
     api_file_download_token_seconds: int
-    'Authentication API file download sign token valid seconds.'
+    'Download sign token valid seconds of file API.'
     api_file_store: FileStore
-    'File API store instance.'
+    'Store instance of file API.'
 
     def __init__(
         self,
@@ -513,8 +515,9 @@ class Server(ServerBase, Singleton):
         client_phone: 'rauth.ServerAuthVerifyPhone | None' = None,
         init_role_id: int | None = None,
         key: str | None = None,
-        user_token_seconds: int = 28800, # Default 8 hours.
-        user_refresh_token_seconds: int = 31536000, # Default 1 year.
+        guest_user_id: int | None = None,
+        user_token_seconds: int = 3600, # Default 1 hours.
+        user_refresh_token_seconds: int = 2592000, # Default 30 day.
         admin_role_name: str = 'admin'
     ) -> None:
         """
@@ -528,8 +531,9 @@ class Server(ServerBase, Singleton):
         init_role_id : Create user initial role ID.
         key : JWT encryption key.
             - `None`: Random 32 length string.
+        guest_user_id : Set guest account user ID, and guest routes.
         user_token_seconds : User data token valid seconds.
-        user_refresh_token_seconds : User data refresh token valid seconds.
+        user_refresh_token_seconds : User data refresh token valid seconds, same time can refresh self.
         admin_role_name : Administrator role name.
         """
 
@@ -553,6 +557,7 @@ class Server(ServerBase, Singleton):
         self.api_auth_client_phone = client_phone
         self.api_auth_init_role_id = init_role_id
         self.api_auth_key = key
+        self.api_auth_guest_user_id = guest_user_id
         self.api_auth_user_token_seconds = user_token_seconds
         self.api_auth_user_refresh_token_seconds = user_refresh_token_seconds
         self.api_auth_admin_role_name = admin_role_name

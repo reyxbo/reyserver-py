@@ -7,7 +7,7 @@
 @Explain : Authentication methods.
 """
 
-from typing import Any, TypedDict, NotRequired, Literal
+from typing import Any, TypedDict, NotRequired, Literal, overload
 from datetime import datetime as Datetime, timedelta as Timedelta
 from fastapi import APIRouter
 from reyclient.rali import ClientAliVerifySms
@@ -113,11 +113,19 @@ ResponseToken = TypedDict(
     'ResponseToken',
     {
         'access_token': Token,
-        'refresh_token': Token,
         'token_type': Literal['Bearer'],
     }
 )
 'JSON dictionary with Token string.'
+ResponseTokenRefresh = TypedDict(
+    'ResponseTokenRefresh',
+    {
+        'access_token': Token,
+        'refresh_token': Token,
+        'token_type': Literal['Bearer'],
+    }
+)
+'JSON dictionary with refresh Token string.'
 
 class ServerORMAuthTableUser(ServerBase, rorm.Table):
     """
@@ -1135,6 +1143,69 @@ def encode_token(
 
     return token
 
+@overload
+def get_user_token_response(
+    user_data: UserData,
+    server: Bind.Server,
+    with_refresh: Literal[False] = False
+) -> ResponseToken: ...
+
+@overload
+def get_user_token_response(
+    user_data: UserData,
+    server: Bind.Server,
+    with_refresh: Literal[True]
+) -> ResponseTokenRefresh: ...
+
+def get_user_token_response(
+    user_data: UserData,
+    server: Bind.Server,
+    with_refresh: Literal[True]
+) -> ResponseToken | ResponseTokenRefresh:
+    """
+    Get response of user data token.
+
+    Parameters
+    ----------
+    user_data : User data.
+    server : Server instance.
+    with_refresh : Whether with refresh Token string. 
+
+    Returns
+    -------
+    Response of user data token.
+    """
+
+    # Get.
+    is_admin = server.api_auth_admin_role_name in user_data['role_names']
+    token = encode_token(
+        'user',
+        server.api_auth_key,
+        server.api_auth_user_token_seconds,
+        user_data['user_id'],
+        perm_apis=user_data['perm_apis'],
+        is_admin=is_admin
+    )
+    if with_refresh:
+        refresh_token = encode_token(
+            'user_refresh',
+            server.api_auth_key,
+            server.api_auth_user_refresh_token_seconds,
+            user_data['user_id']
+        )
+        response = {
+            'access_token': token,
+            'refresh_token': refresh_token,
+            'token_type': 'Bearer'
+        }
+    else:
+        response = {
+            'access_token': token,
+            'token_type': 'Bearer'
+        }
+
+    return response
+
 @router_auth.post('/sessions')
 async def create_token(
     account_type: Literal['name', 'email', 'phone'] = Bind.i.body,
@@ -1142,7 +1213,7 @@ async def create_token(
     verify: str = Bind.i.body,
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
-) -> ResponseToken:
+) -> ResponseTokenRefresh:
     """
     Create token.
 
@@ -1195,81 +1266,8 @@ async def create_token(
         if user_data is None:
             exit_api(401)
 
-    # Token.
-    is_admin = server.api_auth_admin_role_name in user_data['role_names']
-    token = encode_token(
-        'user',
-        server.api_auth_key,
-        server.api_auth_user_token_seconds,
-        user_data['user_id'],
-        perm_apis=user_data['perm_apis'],
-        is_admin=is_admin
-    )
-    refresh_token = encode_token(
-        'user_refresh',
-        server.api_auth_key,
-        server.api_auth_user_refresh_token_seconds,
-        user_data['user_id']
-    )
-
     # Response.
-    response: ResponseToken = {
-        'access_token': token,
-        'refresh_token': refresh_token,
-        'token_type': 'Bearer'
-    }
-
-    return response
-
-@router_auth.post('/sessions/refresh')
-async def refresh_token(
-    refresh_token: str = Bind.i.body_k,
-    conn: Bind.Conn = Bind.conn.auth,
-    server: Bind.Server = Bind.server
-) -> ResponseToken:
-    """
-    Refresh token.
-
-    Parameters
-    ----------
-    refresh_token : Refresh token.
-
-    Returns
-    -------
-    Token data.
-    """
-
-    # Decode.
-    refresh_token_data: TokenDataUserRefresh | None = decode_jwt(refresh_token, server.api_auth_key)
-
-    # Check.
-    if (
-        refresh_token_data is None
-        or refresh_token_data['type'] != 'user_refresh'
-    ):
-        exit_api(401)
-
-    # Token.
-    user_id = int(refresh_token_data['sub'])
-    user_data = await get_user_data(conn, user_id, 'user_id')
-    if user_data is None:
-        exit_api(401)
-    is_admin = server.api_auth_admin_role_name in user_data['role_names']
-    token = encode_token(
-        'user',
-        server.api_auth_key,
-        server.api_auth_user_token_seconds,
-        user_data['user_id'],
-        perm_apis=user_data['perm_apis'],
-        is_admin=is_admin
-    )
-
-    # Response.
-    response: ResponseToken = {
-        'access_token': token,
-        'refresh_token': refresh_token,
-        'token_type': 'Bearer'
-    }
+    response = get_user_token_response(user_data, server, True)
 
     return response
 
@@ -1280,7 +1278,7 @@ async def create_token_oauth2(
     password: str = Bind.i.form,
     conn: Bind.Conn = Bind.conn.auth,
     server: Bind.Server = Bind.server
-) -> ResponseToken:
+) -> ResponseTokenRefresh:
     """
     Create token, comply with OAuth2.
 
@@ -1303,29 +1301,70 @@ async def create_token_oauth2(
     ):
         exit_api(401)
 
-    # Token.
-    is_admin = server.api_auth_admin_role_name in user_data['role_names']
-    token = encode_token(
-        'user',
-        server.api_auth_key,
-        server.api_auth_user_token_seconds,
-        user_data['user_id'],
-        perm_apis=user_data['perm_apis'],
-        is_admin=is_admin
-    )
-    refresh_token = encode_token(
-        'user_refresh',
-        server.api_auth_key,
-        server.api_auth_user_refresh_token_seconds,
-        user_data['user_id']
-    )
+    # Response.
+    response = get_user_token_response(user_data, server, True)
+
+    return response
+
+@router_auth.post('/sessions/guest')
+async def create_token_guest(
+    conn: Bind.Conn = Bind.conn.auth,
+    server: Bind.Server = Bind.server
+) -> ResponseToken:
+    """
+    Create guest account token.
+
+    Returns
+    -------
+    Token data.
+    """
+
+    # Check.
+    if server.api_auth_guest_user_id is None:
+        exit_api(404)
+    user_data = await get_user_data(conn, server.api_auth_guest_user_id, 'user_id')
+    if user_data is None:
+        exit_api(404)
 
     # Response.
-    response: ResponseToken = {
-        'access_token': token,
-        'refresh_token': refresh_token,
-        'token_type': 'Bearer'
-    }
+    response = get_user_token_response(user_data, server)
+
+    return response
+
+@router_auth.post('/sessions/refresh')
+async def refresh_token(
+    refresh_token: str = Bind.i.body_k,
+    conn: Bind.Conn = Bind.conn.auth,
+    server: Bind.Server = Bind.server
+) -> ResponseTokenRefresh:
+    """
+    Refresh token.
+
+    Parameters
+    ----------
+    refresh_token : Refresh token.
+
+    Returns
+    -------
+    Token data.
+    """
+
+    # Decode.
+    refresh_token_data: TokenDataUserRefresh | None = decode_jwt(refresh_token, server.api_auth_key)
+
+    # Check.
+    if (
+        refresh_token_data is None
+        or refresh_token_data['type'] != 'user_refresh'
+    ):
+        exit_api(401)
+
+    # Response.
+    user_id = int(refresh_token_data['sub'])
+    user_data = await get_user_data(conn, user_id, 'user_id')
+    if user_data is None:
+        exit_api(401)
+    response = get_user_token_response(user_data, server, True)
 
     return response
 
@@ -1335,7 +1374,7 @@ async def create_user(
     conn: Bind.Conn = Bind.conn.auth,
     sess: Bind.Sess = Bind.sess.auth,
     server: Bind.Server = Bind.server
-) -> ResponseToken:
+) -> ResponseTokenRefresh:
     """
     Create user.
 
@@ -1398,30 +1437,9 @@ async def create_user(
     user_id = table_user.user_id
     await sess.commit()
 
-    # Token.
-    user_data: UserData = await get_user_data(conn, user_id, 'user_id')
-    is_admin = server.api_auth_admin_role_name in user_data['role_names']
-    token = encode_token(
-        'user',
-        server.api_auth_key,
-        server.api_auth_user_token_seconds,
-        user_data['user_id'],
-        perm_apis=user_data['perm_apis'],
-        is_admin=is_admin
-    )
-    refresh_token = encode_token(
-        'user_refresh',
-        server.api_auth_key,
-        server.api_auth_user_refresh_token_seconds,
-        user_data['user_id']
-    )
-
     # Response.
-    response = {
-        'access_token': token,
-        'refresh_token': refresh_token,
-        'token_type': 'Bearer'
-    }
+    user_data: UserData = await get_user_data(conn, user_id, 'user_id')
+    response = get_user_token_response(user_data, server, True)
 
     return response
 
@@ -1545,7 +1563,8 @@ async def get_user_info(
 async def update_user_name(
     new_name: str = Bind.Body(embed=True, min_length=3, max_length=50),
     user: Bind.User = Bind.user,
-    sess: Bind.Sess = Bind.sess.auth
+    sess: Bind.Sess = Bind.sess.auth,
+    server: Bind.Server = Bind.server
 ) -> ServerORMModelAuthUserOut:
     """
     Update user name.
@@ -1558,6 +1577,10 @@ async def update_user_name(
     -------
     User information.
     """
+
+    # Guest.
+    if user.user_id == server.api_auth_guest_user_id:
+        exit_api(403)
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
@@ -1576,7 +1599,8 @@ async def update_user_password(
     new_password: str = Bind.Body(min_length=6, max_length=60),
     user: Bind.User = Bind.user,
     conn: Bind.Conn = Bind.conn.auth,
-    sess: Bind.Sess = Bind.sess.auth
+    sess: Bind.Sess = Bind.sess.auth,
+    server: Bind.Server = Bind.server
 ) -> ServerORMModelAuthUserOut:
     """
     Update user name.
@@ -1590,6 +1614,10 @@ async def update_user_password(
     -------
     User information.
     """
+
+    # Guest.
+    if user.user_id == server.api_auth_guest_user_id:
+        exit_api(403)
 
     # Check.
     user_data: UserData = await get_user_data(conn, user.user_id, 'user_id')
@@ -1624,6 +1652,10 @@ async def update_user_email(
     -------
     User information.
     """
+
+    # Guest.
+    if user.user_id == server.api_auth_guest_user_id:
+        exit_api(403)
 
     # Parmeter.
     client_email = server.api_auth_client_email
@@ -1667,6 +1699,10 @@ async def update_user_phone(
     User information.
     """
 
+    # Guest.
+    if user.user_id == server.api_auth_guest_user_id:
+        exit_api(403)
+
     # Parmeter.
     client_phone = server.api_auth_client_phone
     if client_phone is None:
@@ -1707,6 +1743,10 @@ async def update_user_avatar(
     -------
     User information.
     """
+
+    # Guest.
+    if user.user_id == server.api_auth_guest_user_id:
+        exit_api(403)
 
     # File.
     _, model_file_info = await depend_file(
