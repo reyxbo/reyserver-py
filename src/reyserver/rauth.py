@@ -65,7 +65,8 @@ TokenDataUser = TypedDict(
         'exp': int,
         'type': Literal['user'],
         'perm_apis': list[str],
-        'is_admin': bool
+        'is_admin': bool,
+        'is_guest': bool
     }
 )
 TokenDataUserRefresh = TypedDict(
@@ -269,6 +270,7 @@ class ServerORMModelAuthUserOut(ServerBase, rorm.Model):
     phone: str | None = rorm.Field(rorm.types.CHAR(11), comment='User phone.', re=PATTERN_PHONE)
     avatar: int | None = rorm.Field(comment='User avatar file ID.')
     is_admin: bool = rorm.Field(not_null=True, comment='Is administrator.')
+    is_guest: bool = rorm.Field(not_null=True, comment='Is guest.')
 
 def build_db(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
     """
@@ -1178,13 +1180,15 @@ def get_user_token_response(
 
     # Get.
     is_admin = server.api_auth_admin_role_name in user_data['role_names']
+    is_guest = server.api_auth_guest_user_id == user_data['user_id']
     token = encode_token(
         'user',
         server.api_auth_key,
         server.api_auth_user_token_seconds,
         user_data['user_id'],
         perm_apis=user_data['perm_apis'],
-        is_admin=is_admin
+        is_admin=is_admin,
+        is_guest=is_guest
     )
     if with_refresh:
         refresh_token = encode_token(
@@ -1555,7 +1559,13 @@ async def get_user_info(
 
     # Get.
     model_user = await sess.get(ServerORMAuthTableUser, user.user_id)
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
+    model_user_out = ServerORMModelAuthUserOut.r_validate(
+        model_user,
+        {
+            'is_admin': user.is_admin,
+            'is_guest': user.is_guest
+        }
+    )
 
     return model_user_out
 
@@ -1579,13 +1589,19 @@ async def update_user_name(
     """
 
     # Guest.
-    if user.user_id == server.api_auth_guest_user_id:
+    if user.is_guest:
         exit_api(403)
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(name=new_name).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
+    model_user_out = ServerORMModelAuthUserOut.r_validate(
+        model_user,
+        {
+            'is_admin': user.is_admin,
+            'is_guest': user.is_guest
+        }
+    )
 
     # Cache.
     await expire_cache(check_user_exists)
@@ -1616,7 +1632,7 @@ async def update_user_password(
     """
 
     # Guest.
-    if user.user_id == server.api_auth_guest_user_id:
+    if user.is_guest:
         exit_api(403)
 
     # Check.
@@ -1628,7 +1644,13 @@ async def update_user_password(
     new_password_hash = hash_bcrypt(new_password).decode()
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(password=new_password_hash).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
+    model_user_out = ServerORMModelAuthUserOut.r_validate(
+        model_user,
+        {
+            'is_admin': user.is_admin,
+            'is_guest': user.is_guest
+        }
+    )
 
     return model_user_out
 
@@ -1654,7 +1676,7 @@ async def update_user_email(
     """
 
     # Guest.
-    if user.user_id == server.api_auth_guest_user_id:
+    if user.is_guest:
         exit_api(403)
 
     # Parmeter.
@@ -1670,7 +1692,13 @@ async def update_user_email(
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(email=new_email).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
+    model_user_out = ServerORMModelAuthUserOut.r_validate(
+        model_user,
+        {
+            'is_admin': user.is_admin,
+            'is_guest': user.is_guest
+        }
+    )
 
     # Cache.
     await expire_cache(check_user_exists)
@@ -1700,7 +1728,7 @@ async def update_user_phone(
     """
 
     # Guest.
-    if user.user_id == server.api_auth_guest_user_id:
+    if user.is_guest:
         exit_api(403)
 
     # Parmeter.
@@ -1716,7 +1744,13 @@ async def update_user_phone(
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess.update(ServerORMAuthTableUser).values(phone=new_phone).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
+    model_user_out = ServerORMModelAuthUserOut.r_validate(
+        model_user,
+        {
+            'is_admin': user.is_admin,
+            'is_guest': user.is_guest
+        }
+    )
 
     # Cache.
     await expire_cache(check_user_exists)
@@ -1745,7 +1779,7 @@ async def update_user_avatar(
     """
 
     # Guest.
-    if user.user_id == server.api_auth_guest_user_id:
+    if user.is_guest:
         exit_api(403)
 
     # File.
@@ -1762,7 +1796,13 @@ async def update_user_avatar(
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
     model_user, = await sess_auth.update(ServerORMAuthTableUser).values(avatar=model_file_info.file_id).where(sql_where).execute_return()
-    model_user_out = ServerORMModelAuthUserOut.r_validate(model_user, {'is_admin': user.is_admin})
+    model_user_out = ServerORMModelAuthUserOut.r_validate(
+        model_user,
+        {
+            'is_admin': user.is_admin,
+            'is_guest': user.is_guest
+        }
+    )
 
     # Cache.
     await expire_cache(get_user_info, user.user_id)

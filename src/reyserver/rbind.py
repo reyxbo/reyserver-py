@@ -340,6 +340,7 @@ class User(ServerBase):
         # Build.
         self.user_id = int(token_data['sub'])
         self.is_admin = token_data['is_admin']
+        self.is_guest = token_data['is_guest']
 
 async def depend_user_opt(
     request: Request,

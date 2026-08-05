@@ -53,7 +53,7 @@ class Server(ServerBase, Singleton):
     'JWT encryption key of authentication API.'
     api_redirect_server_url: str
     'Target server URL of redirect all requests.'
-    api_auth_guest_user_id: int
+    api_auth_guest_user_id: int | None
     'Guest account user ID of authentication API.'
     api_auth_user_token_seconds: int
     'User data token valid seconds of authentication API.'
