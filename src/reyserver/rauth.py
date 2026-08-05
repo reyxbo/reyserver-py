@@ -1160,7 +1160,7 @@ def get_user_token_response(
 def get_user_token_response(
     user_data: UserData,
     server: Bind.Server,
-    with_refresh: Literal[True]
+    with_refresh: bool = False
 ) -> ResponseToken | ResponseTokenRefresh:
     """
     Get response of user data token.
