@@ -21,7 +21,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi_cache import FastAPICache
 from redis.asyncio import Redis
 from reydb import DatabaseAsync
-from reykit.rbase import Singleton, throw
+from reykit.rbase import Singleton, throw, copy_type_hints
 from reykit.ros import FileStore
 from reykit.rrand import randchar
 
@@ -95,7 +95,7 @@ class Server(ServerBase, Singleton):
         depend : Global api dependencies.
         before : Execute before server start.
         after : Execute after server end.
-        prefix : The path prefix for API routes, except public resources, starting with `/`.
+        prefix : The path default prefix for API routes, except public resources, starting with `/`.
         """
 
         # Parameter.
@@ -138,7 +138,7 @@ class Server(ServerBase, Singleton):
         self.wrap_middleware = self.app.middleware('http')
         self.wrap_exception_handler = self.app.exception_handler
         self.mount = self.app.mount
-        self.add_router = self.app.include_router
+        self.add_router = copy_type_hints(self._add_router, self.app.include_router)
 
         # Middleware
         self.gzip_filter_paths: Final[list[str]] = []
@@ -450,6 +450,27 @@ class Server(ServerBase, Singleton):
             allow_methods=method
         )
 
+    def _add_router(self, *args, prefix: str | None = None, **kwargs) -> None:
+        """
+        Add router.
+
+        Parameters
+        ----------
+        args : Position arguments.
+        prefix : The path prefix, cover instance parameter.
+            `Literal['']`: Cancel prefix.
+            `str`: Cover prefix.
+            `None`: Instance parameter `prefix`.
+        kwargs : Keyword arguments.
+        """
+
+        # Prefix.
+        if prefix is None:
+            prefix = self._prefix
+
+        # Add.
+        self.app.include_router(*args, prefix=prefix, **kwargs)
+
     def add_api_redirect_all(self, server_url: str) -> None:
         """
         Add redirect all API.
@@ -492,10 +513,7 @@ class Server(ServerBase, Singleton):
         self.mount('/public', subapp)
         if paths is not None:
             add_frontend_route(paths)
-        self.add_router(router_public, tags=['public'])
-        def add_router_exc(*_, **__):
-            throw(AssertionError, text='public API must be added at the end')
-        self.add_router = add_router_exc
+        self.add_router(router_public, prefix='', tags=['public'])
 
     def add_api_test(self) -> None:
         """
@@ -614,7 +632,7 @@ class Server(ServerBase, Singleton):
 
         # Add.
         self.add_router(router_link, prefix=f'{self._prefix}/links', tags=['link'])
-        self.add_router(router_link_l, tags=['link'])
+        self.add_router(router_link_l, prefix='', tags=['link'])
         self.is_started_link = True
 
 Bind.Server = Server
