@@ -24,10 +24,10 @@ from .rbind import Bind, depend_file
 from .rcache import wrap_cache, expire_cache
 
 __all__ = (
-    'ServerORMAuthTableUser',
+    'ServerORMTableAuthUser',
     'ServerORMTableAuthRole',
     'ServerORMTableAuthPerm',
-    'ServerORMAuthTableAuthUserRole',
+    'ServerORMTableAuthUserRole',
     'ServerORMTableAuthRolePerm',
     'ServerORMTableAuthVerify',
     'ServerORMModelAuthUserInput',
@@ -128,7 +128,7 @@ ResponseTokenRefresh = TypedDict(
 )
 'JSON dictionary with refresh Token string.'
 
-class ServerORMAuthTableUser(ServerBase, rorm.Table):
+class ServerORMTableAuthUser(ServerBase, rorm.Table):
     """
     Server authentication `user` table ORM model.
     """
@@ -190,7 +190,7 @@ class ServerORMTableAuthPerm(ServerBase, rorm.Table):
     )
     is_valid: bool = rorm.Field(field_default='TRUE', not_null=True, comment='Is the valid.')
 
-class ServerORMAuthTableAuthUserRole(ServerBase, rorm.Table):
+class ServerORMTableAuthUserRole(ServerBase, rorm.Table):
     """
     Server authentication `user_role` table ORM model.
     """
@@ -889,10 +889,10 @@ def build_db_auth(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
 
     ## Table.
     tables = [
-        ServerORMAuthTableUser,
+        ServerORMTableAuthUser,
         ServerORMTableAuthRole,
         ServerORMTableAuthPerm,
-        ServerORMAuthTableAuthUserRole,
+        ServerORMTableAuthUserRole,
         ServerORMTableAuthRolePerm
     ]
 
@@ -1430,10 +1430,10 @@ async def create_user(
 
     # Signup.
     update = {'password': hash_bcrypt(model_user.password).decode()}
-    table_user = ServerORMAuthTableUser.r_validate(model_user, update)
+    table_user = ServerORMTableAuthUser.r_validate(model_user, update)
     await sess.add(table_user)
     await sess.flush()
-    user_role = ServerORMAuthTableAuthUserRole(
+    user_role = ServerORMTableAuthUserRole(
         user_id=table_user.user_id,
         role_id=init_role_id
     )
@@ -1498,7 +1498,7 @@ async def reset_password(
     # Update.
     new_password_hash = hash_bcrypt(new_password).decode()
     sql_where = f'"user_id" = {user_data['user_id']}'
-    await sess.update(ServerORMAuthTableUser).values(password=new_password_hash).where(sql_where).execute()
+    await sess.update(ServerORMTableAuthUser).values(password=new_password_hash).where(sql_where).execute()
 
 @router_auth.get('/users/exists')
 @wrap_cache
@@ -1558,7 +1558,7 @@ async def get_user_info(
     """
 
     # Get.
-    model_user = await sess.get(ServerORMAuthTableUser, user.user_id)
+    model_user = await sess.get(ServerORMTableAuthUser, user.user_id)
     model_user_out = ServerORMModelAuthUserOut.r_validate(
         model_user,
         {
@@ -1593,7 +1593,7 @@ async def update_user_name(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    model_user, = await sess.update(ServerORMAuthTableUser).values(name=new_name).where(sql_where).execute_return()
+    model_user, = await sess.update(ServerORMTableAuthUser).values(name=new_name).where(sql_where).execute_return()
     model_user_out = ServerORMModelAuthUserOut.r_validate(
         model_user,
         {
@@ -1641,7 +1641,7 @@ async def update_user_password(
     # Update.
     new_password_hash = hash_bcrypt(new_password).decode()
     sql_where = f'"user_id" = {user.user_id}'
-    model_user, = await sess.update(ServerORMAuthTableUser).values(password=new_password_hash).where(sql_where).execute_return()
+    model_user, = await sess.update(ServerORMTableAuthUser).values(password=new_password_hash).where(sql_where).execute_return()
     model_user_out = ServerORMModelAuthUserOut.r_validate(
         model_user,
         {
@@ -1689,7 +1689,7 @@ async def update_user_email(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    model_user, = await sess.update(ServerORMAuthTableUser).values(email=new_email).where(sql_where).execute_return()
+    model_user, = await sess.update(ServerORMTableAuthUser).values(email=new_email).where(sql_where).execute_return()
     model_user_out = ServerORMModelAuthUserOut.r_validate(
         model_user,
         {
@@ -1741,7 +1741,7 @@ async def update_user_phone(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    model_user, = await sess.update(ServerORMAuthTableUser).values(phone=new_phone).where(sql_where).execute_return()
+    model_user, = await sess.update(ServerORMTableAuthUser).values(phone=new_phone).where(sql_where).execute_return()
     model_user_out = ServerORMModelAuthUserOut.r_validate(
         model_user,
         {
@@ -1793,7 +1793,7 @@ async def update_user_avatar(
 
     # Update.
     sql_where = f'"user_id" = {user.user_id}'
-    model_user, = await sess_auth.update(ServerORMAuthTableUser).values(avatar=model_file_info.file_id).where(sql_where).execute_return()
+    model_user, = await sess_auth.update(ServerORMTableAuthUser).values(avatar=model_file_info.file_id).where(sql_where).execute_return()
     model_user_out = ServerORMModelAuthUserOut.r_validate(
         model_user,
         {
