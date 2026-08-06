@@ -30,7 +30,6 @@ __all__ = (
     'ServerORMTableAuthUserRole',
     'ServerORMTableAuthRolePerm',
     'ServerORMTableAuthVerify',
-    'ServerORMModelAuthUserInput',
     'ServerORMModelAuthUserOut',
     'ServerAuthVerifyEmail',
     'build_db_auth',
@@ -39,7 +38,7 @@ __all__ = (
 
 type AuthenticationTokenType = Literal['user', 'user_refresh', 'file']
 'Authentication token type range.'
-type VerificationCodeScenes = Literal['login', 'signup', 'reset', 'update']
+type VerificationCodeScenes = Literal['login', 'reset', 'update']
 'Verification code scene range.'
 type Token = str
 'Token string.'
@@ -231,31 +230,6 @@ class ServerORMTableAuthVerify(ServerBase, rorm.Table):
     code: str = rorm.Field(rorm.types.VARCHAR(8), not_null=True, index_n=True, comment='Verification code.', len_min=4, len_max=8)
     verify_count: int = rorm.Field(rorm.types.SMALLINT, field_default='0', not_null=True, comment='Verify count.')
     used: bool = rorm.Field(field_default='FALSE', not_null=True, comment='Is the used.')
-
-class ServerORMModelAuthUserInput(ServerBase, rorm.Model):
-    """
-    Server authentication input user ORM model.
-    """
-
-    name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, comment='User name.', len_min=3)
-    password: str = rorm.Field(rorm.types.CHAR(60), not_null=True, comment='User password, encrypted with "bcrypt".', len_min=6)
-    email: rorm.Email | None = rorm.Field(rorm.types.VARCHAR(255), comment='User email, must with parameter "email_code".')
-    email_code: str | None = rorm.Field(rorm.types.VARCHAR(8), comment='Email verification code.', len_min=4, len_max=8)
-    phone: str | None = rorm.Field(rorm.types.CHAR(11), comment='User phone, must with parameter "phone_code".', re=PATTERN_PHONE)
-    phone_code: str | None = rorm.Field(rorm.types.VARCHAR(8), comment='Phone verification code.', len_min=4, len_max=8)
-
-    @rorm.wrap_validate_filed('name')
-    @classmethod
-    def check_name(cls, name: str):
-        if search('^[0-9a-z-_]+$', name) is None:
-            throw(ValueError, text='containing characters not allowed')
-        if search('[a-z]', name) is None:
-            throw(ValueError, text='must contain lowercase letters')
-        if search('^[-_]|[-_]$', name) is not None:
-            throw(ValueError, text='the start and end cannot be the character "-_"')
-        if search('[-_]{2}', name) is not None:
-            throw(ValueError, text='must not be contain consecutive characters "-_"')
-        return name
 
 class ServerORMModelAuthUserOut(ServerBase, rorm.Model):
     """
@@ -1374,7 +1348,8 @@ async def refresh_token(
 
 @router_auth.post('/users')
 async def create_user(
-    model_user: ServerORMModelAuthUserInput,
+    name: str = Bind.Body(min_length=3),
+    password: str = Bind.Body(min_length=6),
     conn: Bind.Conn = Bind.conn.auth,
     sess: Bind.Sess = Bind.sess.auth,
     server: Bind.Server = Bind.server
@@ -1384,14 +1359,15 @@ async def create_user(
 
     Parameters
     ----------
-    model_user : User data model.
+    name : User name.
+    password : User password.
 
     Returns
     -------
     JSON with "token".
     """
 
-    # Parameter.
+    # Check.
     init_role_id = server.api_auth_init_role_id
     client_email = server.api_auth_client_email
     client_phone = server.api_auth_client_phone
@@ -1401,36 +1377,21 @@ async def create_user(
         or client_phone is None
     ):
         exit_api(404)
-
-    # Verify.
-    if model_user.email is not None:
-        if model_user.email_code is None:
-            exit_api(text='missing parameter "email_code"')
-        else:
-            result = await client_email.async_verify(
-                'signup',
-                model_user.email,
-                model_user.email_code,
-                True
-            )
-            if not result:
-                exit_api(text='parameter "email_code" verification failed')
-    if model_user.phone is not None:
-        if model_user.phone_code is None:
-            exit_api(text='missing parameter "phone_code"')
-        else:
-            result = await client_phone.async_verify(
-                'signup',
-                model_user.phone,
-                model_user.phone_code,
-                True
-            )
-            if not result:
-                exit_api(text='parameter "phone_code" verification failed')
+    if search('^[0-9a-z-_]+$', name) is None:
+        exit_api(422, text='containing characters not allowed')
+    if search('[a-z]', name) is None:
+        exit_api(422, text='must contain lowercase letters')
+    if search('^[-_]|[-_]$', name) is not None:
+        exit_api(422, text='the start and end cannot be the character "-_"')
+    if search('[-_]{2}', name) is not None:
+        exit_api(422, text='must not be contain consecutive characters "-_"')
 
     # Signup.
-    update = {'password': hash_bcrypt(model_user.password).decode()}
-    table_user = ServerORMTableAuthUser.r_validate(model_user, update)
+    password_hash = hash_bcrypt(password).decode()
+    table_user = ServerORMTableAuthUser(
+        name=name,
+        password=password_hash
+    )
     await sess.add(table_user)
     await sess.flush()
     user_role = ServerORMTableAuthUserRole(
@@ -1541,6 +1502,9 @@ async def check_user_exists(
     # Select.
     sql_where = ' OR '.join(sql_where_parts)
     is_exists = await conn.execute.exist('user', sql_where, **kwdata)
+
+    # Cache.
+    await expire_cache(check_user_exists)
 
     return is_exists
 
