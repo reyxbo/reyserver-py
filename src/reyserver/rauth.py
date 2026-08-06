@@ -1573,8 +1573,7 @@ async def get_user_info(
 async def update_user_name(
     new_name: str = Bind.Body(embed=True, min_length=3, max_length=50),
     user: Bind.User = Bind.user,
-    sess: Bind.Sess = Bind.sess.auth,
-    server: Bind.Server = Bind.server
+    sess: Bind.Sess = Bind.sess.auth
 ) -> ServerORMModelAuthUserOut:
     """
     Update user name.
@@ -1615,8 +1614,7 @@ async def update_user_password(
     new_password: str = Bind.Body(min_length=6, max_length=60),
     user: Bind.User = Bind.user,
     conn: Bind.Conn = Bind.conn.auth,
-    sess: Bind.Sess = Bind.sess.auth,
-    server: Bind.Server = Bind.server
+    sess: Bind.Sess = Bind.sess.auth
 ) -> ServerORMModelAuthUserOut:
     """
     Update user name.
