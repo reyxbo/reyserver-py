@@ -1467,6 +1467,7 @@ async def reset_password(
         - `Literal['phone_code']`: Use `phone+code`.
     account : Email address or phone number.
     code : Verification code.
+    new_password : New password.
     """
 
     # Check.
