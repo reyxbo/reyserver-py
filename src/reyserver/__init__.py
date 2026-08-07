@@ -15,6 +15,8 @@ rbind : Dependency bind methods.
 rcache : Cache methods.
 rclient : Client methods.
 rfile : File methods.
+rlink : Link methods.
+rmiddleware : Middleware methods.
 rpublic : Public methods.
 rredirect : Redirect methods.
 rserver : Server methods.

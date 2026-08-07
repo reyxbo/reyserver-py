@@ -9,10 +9,8 @@
 
 from typing import NoReturn
 from http import HTTPStatus
-from starlette.types import Scope, Receive, Send
 from fastapi import HTTPException
 from fastapi.params import Depends
-from fastapi.middleware.gzip import GZipMiddleware as FGZipMiddleware
 from reykit.rbase import Base, Exit, throw
 from reydb import rorm
 
@@ -21,8 +19,7 @@ __all__ = (
     'ServerExit',
     'ServerExitAPI',
     'exit_api',
-    'depend_pass',
-    'GZipMiddleware'
+    'depend_pass'
 )
 
 class ServerBase(Base):
@@ -81,21 +78,3 @@ async def depend_pass_func() -> None:
     """
 
 depend_pass = Depends(depend_pass_func)
-
-class GZipMiddleware(FGZipMiddleware):
-    """
-    Re encapsulate GZip middleware of custom filter.
-    """
-
-    def __init__(self, *args, filter_paths: list[str], **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.filter_paths = filter_paths
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if (
-            scope['type'] != 'http'
-            or f'{scope.get('method', '')} {scope.get('path', '')}'.lower() in self.filter_paths
-        ):
-            await self.app(scope, receive, send)
-            return
-        await super().__call__(scope, receive, send)

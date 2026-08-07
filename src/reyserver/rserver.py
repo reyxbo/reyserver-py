@@ -25,9 +25,10 @@ from reykit.rbase import Singleton, throw, copy_type_hints
 from reykit.ros import FileStore
 from reykit.rrand import randchar
 
-from .rbase import ServerBase, GZipMiddleware
+from .rbase import ServerBase
 from .rbind import Bind
 from .rcache import load_cache_version, init_cache
+from .rmiddleware import GZipMiddleware
 from . import rauth
 
 __all__ = (
@@ -141,9 +142,9 @@ class Server(ServerBase, Singleton):
         self.add_router = copy_type_hints(self._add_router, self.app.include_router)
 
         # Middleware
-        self.gzip_filter_paths: Final[list[str]] = []
+        self.gzip_skip_paths: Final[list[str]] = []
         "GZip middleware filter paths, match format is `f'{methods} {path}'.lower()`"
-        self.app.add_middleware(GZipMiddleware, filter_paths=self.gzip_filter_paths)
+        self.app.add_middleware(GZipMiddleware, filter_paths=self.gzip_skip_paths)
         self.app.add_middleware(TrustedHostMiddleware)
         self.__add_base_middleware()
 
@@ -523,9 +524,7 @@ class Server(ServerBase, Singleton):
         from .rtest import router_test
 
         # Add.
-        prefix = f'{self._prefix}/test'
-        self.gzip_filter_paths.append(f'get {prefix}/download')
-        self.add_router(router_test, prefix=prefix, tags=['test'])
+        self.add_router(router_test, prefix=f'{self._prefix}/test', tags=['test'])
 
     def add_api_auth(
         self,
