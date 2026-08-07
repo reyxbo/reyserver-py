@@ -144,7 +144,7 @@ class Server(ServerBase, Singleton):
         # Middleware
         self.gzip_skip_paths: Final[list[str]] = []
         "GZip middleware filter paths, match format is `f'{methods} {path}'.lower()`"
-        self.app.add_middleware(GZipMiddleware, filter_paths=self.gzip_skip_paths)
+        self.app.add_middleware(GZipMiddleware, server=self)
         self.app.add_middleware(TrustedHostMiddleware)
         self.__add_base_middleware()
 
