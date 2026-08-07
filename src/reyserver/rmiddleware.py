@@ -29,12 +29,11 @@ class GZipMiddleware(FGZipMiddleware):
         )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope['type'] != 'http':
-            match_path = f'{scope.get('method', '')} {scope.get('path', '')}'.lower()
-            if (
-                match_path in self.default_gzip_skip_paths
-                or match_path in self.server.gzip_skip_paths
-            ):
-                await self.app(scope, receive, send)
-                return
+        if (
+            scope['type'] != 'http'
+            or (match_path := f'{scope.get('method', '')} {scope.get('path', '')}'.lower()) in self.default_gzip_skip_paths
+            or match_path in self.server.gzip_skip_paths
+        ):
+            await self.app(scope, receive, send)
+            return
         await super().__call__(scope, receive, send)
