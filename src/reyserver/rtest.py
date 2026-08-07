@@ -108,7 +108,7 @@ async def test_upload(
     websocket: Bind.WebSocket
 ) -> None:
     """
-    Test upload, websocket connection of receive bytes data. Maximum limit 10 seconds.
+    Test upload, websocket connection of receive bytes data, maximum limit 10 seconds.
     First receive `{'total_s': float}` setting total seconds, value range is (0-10], loop receive `bytes` and send statistics parameters.
     """
 
@@ -193,15 +193,9 @@ async def test_upload_websocket() -> TestUploadReceiveParameters:
     exit_api(404)
 
 @router_test.get('/download')
-async def test_download(
-    total_s: float = Bind.Query(5, gt=0, le=10)
-) -> StreamingResponse:
+async def test_download() -> StreamingResponse:
     """
-    Test download.
-
-    Parameters
-    ----------
-    total_s : Download seconds, value range is (0-10].
+    Test download, maximum limit 10 seconds.
 
     Returns
     -------
@@ -209,15 +203,16 @@ async def test_download(
     """
 
     # Parameter.
-    each_size = 1048576 # 1 MB.
-    chunk = b'0' * each_size
+    max_s = 10
+    chunk_size = 1048576 # 1 MB.
+    chunk = b'0' * chunk_size
 
     # Download.
     async def generator():
         tm = TimeMark()
         while True:
             tm()
-            if tm.total_spend >= total_s:
+            if tm.total_spend >= max_s:
                 break
             yield chunk
     response = StreamingResponse(
