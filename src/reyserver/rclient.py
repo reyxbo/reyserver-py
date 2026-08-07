@@ -122,7 +122,7 @@ class ServerClient(ServerBase):
         """
 
         # Parameter.
-        url = join_url(self.url, self.prefix, 'auth', 'session')
+        url = join_url(self.url, self.prefix, 'auth', 'sessions')
         data = {
             'account_type': 'name',
             'account': username,
