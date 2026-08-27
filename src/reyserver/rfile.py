@@ -222,8 +222,8 @@ async def get_files(
     # Get.
     page = await get_page(
         ServerORMTableFileInfo,
-        conn,
         page_params,
+        conn,
         where=where,
         order='"create_time" DESC'
     )

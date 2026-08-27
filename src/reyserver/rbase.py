@@ -59,23 +59,23 @@ class Page[T](ServerBase, rorm.Model):
 @overload
 async def get_page[T: rorm.Table](
     table: T,
-    conn: DatabaseEngineAsync,
     page_params: PageParams,
+    conn: DatabaseEngineAsync,
     **kwargs: Any
 ) -> Page[T]: ...
 
 @overload
 async def get_page(
     table: str,
-    conn: DatabaseEngineAsync,
     page_params: PageParams,
+    conn: DatabaseEngineAsync,
     **kwargs: Any
 ) -> Page[dict[str, Any]]: ...
 
 async def get_page[T: rorm.Table](
     table: T | str,
-    conn: DatabaseEngineAsync,
     page_params: PageParams,
+    conn: DatabaseEngineAsync,
     **kwargs: Any
 ) -> Page[T | dict[str, Any]]:
     """
@@ -86,8 +86,8 @@ async def get_page[T: rorm.Table](
     table : Database table.
         - `rorm.Table`: Database table ORM model.
         - `str`: Database table name.
-    conn : Asynchronous database engine.
     page_params : Page control parameters.
+    conn : Asynchronous database engine.
     kwargs : Database table select keyword arguments.
 
     Returns
