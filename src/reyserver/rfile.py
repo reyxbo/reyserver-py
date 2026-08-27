@@ -23,7 +23,6 @@ __all__ = (
     'ServerFileVisibleEnum',
     'ServerORMTableFileData',
     'ServerORMTableFileInfo',
-    'ServerORMTableFileInfoOut',
     'build_db_file',
     'router_file'
 )
@@ -61,7 +60,7 @@ class ServerORMTableFileInfo(ServerBase, rorm.Table):
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
     file_id: int = rorm.Field(key_auto=True, comment='File ID.')
     user_id: int | None = rorm.Field(index_n=True, comment='File owner user ID. When is null, then owner is system.')
-    visible: ServerFileVisibleEnum = rorm.Field(rorm.ENUM(ServerFileVisibleEnum), not_null=True, index_n=True, comment='File visible type.')
+    visible: str = rorm.Field(rorm.ENUM(ServerFileVisibleEnum), not_null=True, index_n=True, comment='File visible type.')
     md5: str = rorm.Field(rorm.types.CHAR(32), key_foreign=ServerORMTableFileData.md5, not_null=True, index_n=True, comment='File MD5.')
     size: int = rorm.Field(not_null=True, comment='File bytes size.')
     name: str | None = rorm.Field(rorm.types.VARCHAR(260), index_n=True, comment='File name.')
