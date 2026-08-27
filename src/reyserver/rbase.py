@@ -7,20 +7,25 @@
 @Explain : Base methods.
 """
 
-from typing import NoReturn
+from typing import Any, TypedDict, NoReturn, overload
 from http import HTTPStatus
 from fastapi import HTTPException
 from fastapi.params import Depends
+from reydb import rorm, DatabaseEngineAsync
 from reykit.rbase import Base, Exit, throw
-from reydb import rorm
 
 __all__ = (
     'ServerBase',
     'ServerExit',
     'ServerExitAPI',
+    'Page',
+    'get_page',
     'exit_api',
     'depend_pass'
 )
+
+PageParams = TypedDict('PageParams', {'offset': int | None, 'limit': int | None, 'with_total': bool})
+'Page control parameters.'
 
 class ServerBase(Base):
     """
@@ -51,6 +56,70 @@ class Page[T](ServerBase, rorm.Model):
     total: int | None
     "Row total count."
 
+@overload
+async def get_page[T: rorm.Table](
+    table: T,
+    conn: DatabaseEngineAsync,
+    page_params: PageParams,
+    **kwargs: Any
+) -> Page[T]: ...
+
+@overload
+async def get_page(
+    table: str,
+    conn: DatabaseEngineAsync,
+    page_params: PageParams,
+    **kwargs: Any
+) -> Page[dict[str, Any]]: ...
+
+async def get_page[T: rorm.Table](
+    table: T | str,
+    conn: DatabaseEngineAsync,
+    page_params: PageParams,
+    **kwargs: Any
+) -> Page[T | dict[str, Any]]:
+    """
+    Asynchronous get response of one page data.
+
+    Parameters
+    ----------
+    table : Database table.
+        - `rorm.Table`: Database table ORM model.
+        - `str`: Database table name.
+    conn : Asynchronous database engine.
+    page_params : Page control parameters.
+    kwargs : Database table select keyword arguments.
+
+    Returns
+    -------
+    Response of one page data.
+    """
+
+    # Get.
+    result = await conn.execute.select(
+        table,
+        limit=page_params['limit'],
+        offset=page_params['offset'],
+        **kwargs
+    )
+    data = result.to_table()
+
+    # Total.
+    if page_params['with_total']:
+        total = await conn.execute.count(table)
+    else:
+        total = None
+
+    # Response.
+    page = Page(
+        offset=page_params['offset'],
+        limit=page_params['limit'],
+        data=data,
+        total=total
+    )
+
+    return page
+
 def exit_api(code: int = 400, text: str | None = None) -> NoReturn:
     """
     Throw exception to exit API.
@@ -59,7 +128,7 @@ def exit_api(code: int = 400, text: str | None = None) -> NoReturn:
     ----------
     code : Response status code.
     text : Explain text.
-        `None`: Use Default text.
+        - `None`: Use Default text.
     """
 
     # Parameter.

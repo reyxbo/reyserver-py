@@ -459,9 +459,9 @@ class Server(ServerBase, Singleton):
         ----------
         args : Position arguments.
         prefix : The path prefix, cover instance parameter.
-            `Literal['']`: Cancel prefix.
-            `str`: Cover prefix.
-            `None`: Instance parameter `prefix`.
+            - `Literal['']`: Cancel prefix.
+            - `str`: Cover prefix.
+            - `None`: Instance parameter `prefix`.
         kwargs : Keyword arguments.
         """
 

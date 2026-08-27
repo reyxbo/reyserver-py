@@ -15,7 +15,7 @@ from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rdata import decode_jwt
 from reykit.rnet import get_content_type
 
-from .rbase import ServerBase, exit_api
+from .rbase import ServerBase, get_page, exit_api
 from .rbind import Bind
 from .rcache import wrap_cache, expire_cache
 
@@ -58,20 +58,6 @@ class ServerORMTableFileInfo(ServerBase, rorm.Table):
 
     __name__ = 'info'
     __comment__ = 'File information table.'
-    create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
-    file_id: int = rorm.Field(key_auto=True, comment='File ID.')
-    user_id: int | None = rorm.Field(index_n=True, comment='File owner user ID. When is null, then owner is system.')
-    visible: ServerFileVisibleEnum = rorm.Field(rorm.ENUM(ServerFileVisibleEnum), not_null=True, index_n=True, comment='File visible type.')
-    md5: str = rorm.Field(rorm.types.CHAR(32), key_foreign=ServerORMTableFileData.md5, not_null=True, index_n=True, comment='File MD5.')
-    size: int = rorm.Field(not_null=True, comment='File bytes size.')
-    name: str | None = rorm.Field(rorm.types.VARCHAR(260), index_n=True, comment='File name.')
-    note: str | None = rorm.Field(rorm.types.VARCHAR(500), comment='File note.')
-
-class ServerORMTableFileInfoOut(ServerBase, rorm.Model):
-    """
-    Server file information out ORM model.
-    """
-
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
     file_id: int = rorm.Field(key_auto=True, comment='File ID.')
     user_id: int | None = rorm.Field(index_n=True, comment='File owner user ID. When is null, then owner is system.')
@@ -215,9 +201,8 @@ router_file = APIRouter()
 async def get_files(
     page_params: Bind.PageParams = Bind.page,
     user: Bind.UserOpt = Bind.user_opt,
-    conn: Bind.Conn = Bind.conn.file,
-    sess: Bind.Sess = Bind.sess.file
-) -> Bind.Page[ServerORMTableFileInfoOut]:
+    conn: Bind.Conn = Bind.conn.file
+) -> Bind.Page[ServerORMTableFileInfo]:
     """
     Get file information table.
 
@@ -235,27 +220,12 @@ async def get_files(
         where = f'"visible" != \'private\' AND "user_id" IS NOT NULL OR "user_id" = {user.user_id}'
 
     # Get.
-    models_file_info = await (
-        sess.select(ServerORMTableFileInfo)
-        .where(where)
-        .order_by('"create_time" DESC')
-        .offset(page_params['offset'])
-        .limit(page_params['limit'])
-        .execute()
-    )
-
-    # Total.
-    if page_params['with_total']:
-        total = await conn.execute.count(ServerORMTableFileInfo, where)
-    else:
-        total = None
-
-    # Response.
-    page = Bind.Page(
-        offset=page_params['offset'],
-        limit=page_params['limit'],
-        data=models_file_info,
-        total=total
+    page = await get_page(
+        ServerORMTableFileInfo,
+        conn,
+        page_params,
+        where=where,
+        order='"create_time" DESC'
     )
 
     return page
@@ -266,7 +236,7 @@ async def get_file(
     file_id: int = Bind.i.path,
     user: Bind.UserOpt = Bind.user_opt,
     sess: Bind.Sess = Bind.sess.file
-) -> ServerORMTableFileInfoOut:
+) -> ServerORMTableFileInfo:
     """
     Get file information.
 
@@ -400,8 +370,8 @@ async def get_file_conetnt(
     ----------
     file_id : File ID.
     handle : Response header add content disposition type.
-        `Literal['download']`: The browser should download.
-        `Literal['open']`: The browser should open.
+        - `Literal['download']`: The browser should download.
+        - `Literal['open']`: The browser should open.
 
     Returns
     -------
@@ -468,8 +438,8 @@ async def get_file_sign_url(
     ----------
     file_id : File ID.
     handle : Response header add content disposition type.
-        `Literal['download']`: The browser should download.
-        `Literal['open']`: The browser should open.
+        - `Literal['download']`: The browser should download.
+        - `Literal['open']`: The browser should open.
 
     Returns
     -------

@@ -13,7 +13,7 @@ from reydb import rorm, DatabaseEngine, DatabaseEngineAsync
 from reykit.rnum import encode_base62, decode_base62
 from reykit.rtime import now
 
-from .rbase import ServerBase, throw, exit_api
+from .rbase import ServerBase, throw, get_page, exit_api
 from .rbind import Bind
 from .rcache import wrap_cache, expire_cache
 
@@ -172,8 +172,7 @@ def decode_link(code: str) -> int:
 async def get_links(
     page_params: Bind.PageParams = Bind.page,
     user: Bind.User = Bind.user,
-    conn: Bind.Conn = Bind.conn.link,
-    sess: Bind.Sess = Bind.sess.link
+    conn: Bind.Conn = Bind.conn.link
 ) -> Bind.Page[ServerORMTableLinkOut]:
     """
     Get mapping link table.
@@ -190,32 +189,15 @@ async def get_links(
         where = f'"user_id" = {user.user_id} AND ("expire_time" IS NULL OR "expire_time" > NOW())'
 
     # Get.
-    models_link = await (
-        sess.select(ServerORMTableLink)
-        .where(where)
-        .order_by('"create_time" DESC')
-        .offset(page_params['offset'])
-        .limit(page_params['limit'])
-        .execute()
+    page = await get_page(
+        ServerORMTableLink,
+        conn,
+        page_params,
+        where=where,
+        order='"create_time" DESC'
     )
-    models_link = [
-        ServerORMTableLinkOut.r_validate(model, {'code': encode_link(model.id)})
-        for model in models_link
-    ]
-
-    # Total.
-    if page_params['with_total']:
-        total = await conn.execute.count(ServerORMTableLink, where)
-    else:
-        total = None
-
-    # Response.
-    page = Bind.Page(
-        offset=page_params['offset'],
-        limit=page_params['limit'],
-        data=models_link,
-        total=total
-    )
+    for row in page.data:
+        row['code'] = encode_link(row['id'])
 
     return page
 

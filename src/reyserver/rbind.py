@@ -7,7 +7,7 @@
 @Explain : Dependency bind methods.
 """
 
-from typing import TypedDict, Literal, overload, TYPE_CHECKING
+from typing import Literal, overload, TYPE_CHECKING
 from datetime import (
     datetime as Datetime,
     date as Date,
@@ -41,7 +41,7 @@ from reykit.rdata import decode_jwt
 from reykit.ros import get_md5
 from reykit.rre import search_batch
 
-from .rbase import ServerBase, Page, exit_api
+from .rbase import PageParams, ServerBase, Page, exit_api
 
 if TYPE_CHECKING:
     from .rauth import TokenDataUser, Token
@@ -57,8 +57,6 @@ __all__ = (
     'ServerBind',
     'Bind'
 )
-
-PageParams = TypedDict('PageParams', {'offset': int | None, 'limit': int | None, 'with_total': bool})
 
 class ServerBindInstanceDatabaseSuper(ServerBase):
     """
