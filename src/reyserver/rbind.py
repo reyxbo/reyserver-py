@@ -34,6 +34,7 @@ from fastapi.params import (
     File as Forms
 )
 from fastapi.security import HTTPBearer, OAuth2PasswordBearer, HTTPAuthorizationCredentials
+from reydb import DatabaseAsync
 from reydb.rconn import DatabaseConnectionAsync
 from reydb.rorm import DatabaseORMSessionAsync
 from reykit.rbase import StaticMeta, Singleton, throw
@@ -299,7 +300,7 @@ async def depend_server(request: Request) -> 'Server':
 
     Returns
     -------
-    Server.
+    Server instance.
     """
 
     # Get.
@@ -307,6 +308,23 @@ async def depend_server(request: Request) -> 'Server':
     server: Server = app.extra['server']
 
     return server
+
+async def depend_db(request: Request) -> DatabaseAsync:
+    """
+    Dependencie function of now database instance.
+
+    Returns
+    -------
+    Database instance.
+    """
+
+    # Get.
+    app: FastAPI = request.app
+    server: Server = app.extra['server']
+    if server.db is None:
+        throw(TypeError, server.db)
+
+    return server.db
 
 bearer = HTTPBearer(
     scheme_name='Bearer',
@@ -655,6 +673,7 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     HttpUrl = HttpUrl
     FileUrl = FileUrl
     Json = Json
+    Database = DatabaseAsync
     Conn = DatabaseConnectionAsync
     Sess = DatabaseORMSessionAsync
     i = ServerBindInstance()
@@ -665,6 +684,8 @@ class ServerBind(ServerBase, metaclass=StaticMeta):
     'Server API bind parameter asynchronous database session.'
     server = Depend(depend_server)
     'Server global instance dependency type.'
+    database = Depend(depend_db)
+    'Server databse global instance dependency type.'
     user_opt = Depend(depend_user_opt)
     'Optional current session user data instance dependency type.'
     user = Depend(depend_user)

@@ -54,6 +54,8 @@ class Server(ServerBase, Singleton):
     'JWT encryption key of authentication API.'
     api_redirect_server_url: str
     'Target server URL of redirect all requests.'
+    api_database_table_allowlist: dict[str, list[str]]
+    'Allow list for universal API request database table.'
     api_auth_guest_user_id: int | None
     'Guest account user ID of authentication API.'
     api_auth_user_token_seconds: int
@@ -515,6 +517,24 @@ class Server(ServerBase, Singleton):
         if paths is not None:
             add_frontend_route(paths)
         self.add_router(router_public, prefix='', tags=['public'])
+
+    def add_api_database(
+        self,
+        allowlist: dict[str, list[str]]
+    ) -> None:
+        """
+        Add database API.
+
+        Parameters
+        ----------
+        allowlist : Allow list for universal API request database table.
+        """
+
+        from .rdb import router_db
+
+        # Add.
+        self.database_table_allowlist = allowlist
+        self.add_router(router_db, prefix=f'{self._prefix}/database', tags=['database'])
 
     def add_api_test(self) -> None:
         """
