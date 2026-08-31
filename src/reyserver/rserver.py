@@ -493,7 +493,7 @@ class Server(ServerBase, Singleton):
     def add_api_public(
         self,
         public_dir: str,
-        paths: Sequence[str] | None = None
+        frontend_route_paths: Sequence[str] | None = None
     ) -> None:
         """
         Add public API,
@@ -504,7 +504,7 @@ class Server(ServerBase, Singleton):
         Parameters
         ----------
         public_dir : Public directory.
-        paths : Paths of add and map frontend static route, mapping `{public_dir}/index.html` to `GET `/{path}`.
+        frontend_route_paths : Paths of add and map frontend static route, mapping `{public_dir}/index.html` to `GET `/{path}`.
         """
 
         from .rpublic import router_public, add_frontend_route
@@ -514,8 +514,8 @@ class Server(ServerBase, Singleton):
         self.api_public_dir = public_dir
         subapp = StaticFiles(directory=self.api_public_dir)
         self.mount('/public', subapp)
-        if paths is not None:
-            add_frontend_route(paths)
+        if frontend_route_paths is not None:
+            add_frontend_route(frontend_route_paths)
         self.add_router(router_public, prefix='', tags=['public'])
 
     def add_api_database(
