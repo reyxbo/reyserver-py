@@ -183,8 +183,9 @@ class ServerORMTableAuthPerm(ServerBase, rorm.Table):
     perm_id: int = rorm.Field(rorm.types.SMALLINT, key_auto=True, comment='Permission ID.')
     name: str = rorm.Field(rorm.types.VARCHAR(50), not_null=True, index_u=True, comment='Permission name.')
     desc: str | None = rorm.Field(rorm.types.VARCHAR(500), comment='Permission description.')
-    api: str | None = rorm.Field(
+    api: str = rorm.Field(
         rorm.types.VARCHAR(1000),
+        not_null=True,
         comment=r'API method and resource path regular expression "match" pattern, case insensitive, format is "{method} {path}" (e.g. "GET /users").'
     )
     is_valid: bool = rorm.Field(field_default='TRUE', not_null=True, comment='Is the valid.')
