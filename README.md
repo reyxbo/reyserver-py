@@ -1,3 +1,5 @@
+[中文](README_zh.md)
+
 # reyserver
 
 **reyserver** is a backend asynchronous server integration API framework built on [FastAPI](https://fastapi.tiangolo.com/).
