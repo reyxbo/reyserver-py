@@ -69,33 +69,6 @@ The `Server` object also provides convenient methods for adding other modules. Y
 
 reyserver is divided into multiple functional modules. Each module provides different backend service capabilities.
 
-## `rserver` — Server Methods
-
-**Top-level server module.**
-
-Provides the top-level server object of reyserver and serves as the primary entry point for using the framework.
-
-Main features:
-
-* Create and configure the server object
-* Add APIs provided by other modules
-* Organize server functionality in a unified manner
-* Start the server
-
-Basic usage:
-
-```python
-from reyserver import Server
-
-server = Server(**server_args)
-
-if __name__ == "__main__":
-
-    server.run(**run_args)
-```
-
----
-
 ## `rall` — All Import Methods
 
 **Unified export module.**
@@ -307,6 +280,33 @@ Primarily used to encapsulate server API calls, such as:
 * File processing APIs
 * Testing APIs
 * Other server APIs
+
+---
+
+## `rserver` — Server Methods
+
+**Top-level server module.**
+
+Provides the top-level server object of reyserver and serves as the primary entry point for using the framework.
+
+Main features:
+
+* Create and configure the server object
+* Add APIs provided by other modules
+* Organize server functionality in a unified manner
+* Start the server
+
+Basic usage:
+
+```python
+from reyserver import Server
+
+server = Server(**server_args)
+
+if __name__ == "__main__":
+
+    server.run(**run_args)
+```
 
 ---
 

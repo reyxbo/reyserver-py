@@ -68,32 +68,6 @@ if __name__ == "__main__":
 
 reyserver 按功能划分为多个模块，各模块负责不同的后端服务能力。
 
-## `rserver` — Server methods
-
-**顶层服务器模块。**
-
-提供 reyserver 的顶层服务器对象，是使用框架的主要入口。
-
-主要功能：
-
-* 创建和配置服务器对象
-* 添加其它模块提供的 API
-* 统一组织服务器功能
-* 启动服务器
-
-基本使用方式：
-
-```python
-from reyserver import Server
-
-server = Server(**server_args)
-
-if __name__ == "__main__":
-    server.run(**run_args)
-```
-
----
-
 ## `rall` — All import methods
 
 **统一导出模块。**
@@ -303,6 +277,32 @@ reyserver
 * 文件处理接口
 * 测试接口
 * 其它服务器 API
+
+---
+
+## `rserver` — Server methods
+
+**顶层服务器模块。**
+
+提供 reyserver 的顶层服务器对象，是使用框架的主要入口。
+
+主要功能：
+
+* 创建和配置服务器对象
+* 添加其它模块提供的 API
+* 统一组织服务器功能
+* 启动服务器
+
+基本使用方式：
+
+```python
+from reyserver import Server
+
+server = Server(**server_args)
+
+if __name__ == "__main__":
+    server.run(**run_args)
+```
 
 ---
 
