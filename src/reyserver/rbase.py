@@ -4,7 +4,8 @@
 @Time    : 2025-07-17
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Base methods.
+@Explain : Base utility module.
+    Provides common methods and shared functionality used by other modules.
 """
 
 from typing import Any, TypedDict, NoReturn, overload

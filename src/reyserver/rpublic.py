@@ -4,16 +4,15 @@
 @Time    : 2025-10-21
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Public methods.
+@Explain : Public resource module.
+    Provides APIs for website homepages, public files, and frontend static resources.
 """
 
 from collections.abc import Sequence
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, FileResponse
-from reykit.rbase import throw
 from reykit.ros import File, Folder
 
-from .rbase import exit_api
 from .rbind import Bind
 
 __all__ = (

@@ -4,7 +4,8 @@
 @Time    : 2025-10-05
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Server methods.
+@Explain : Top-level server module.
+    Provides the top-level server object of reyserver and serves as the primary entry point for using the framework.
 """
 
 from typing import Literal, Final, overload

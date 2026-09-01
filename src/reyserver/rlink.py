@@ -4,7 +4,8 @@
 @Time    : 2026-06-09
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Mapping link methods.
+@Explain : Short link module.
+    Provides APIs for mapping long URLs to short URLs.
 """
 
 from fastapi import APIRouter

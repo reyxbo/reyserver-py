@@ -4,7 +4,8 @@
 @Time    : 2025-10-10
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Authentication methods.
+@Explain : User authentication module.
+    Based on the **RBAC (Role-Based Access Control)** model, this module manages access permissions through users, roles, and permissions.
 """
 
 from typing import Any, TypedDict, NotRequired, Literal, overload

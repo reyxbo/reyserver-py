@@ -4,7 +4,8 @@
 @Time    : 2025-10-09
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Client methods.
+@Explain : Client module.
+    Provides convenient client methods for calling APIs provided by the server.
 """
 
 from typing import TypedDict, Literal, overload

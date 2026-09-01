@@ -4,7 +4,9 @@
 @Time    : 2026-08-31
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Database methods.
+@Explain : Database module.
+    Provides convenient methods for creating database APIs.
+    By specifying database table names, corresponding data APIs can be created quickly, reducing the amount of repetitive database API code that needs to be written.
 """
 
 from typing import Any

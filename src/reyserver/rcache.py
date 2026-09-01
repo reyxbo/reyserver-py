@@ -4,7 +4,8 @@
 @Time    : 2025-10-25
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Cache methods.
+@Explain : Cache module.
+    Provides API caching capabilities based on Redis.
 """
 
 from typing import Any, overload

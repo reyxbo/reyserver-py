@@ -4,7 +4,8 @@
 @Time    : 2025-10-06
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : File methods. Can create database used "build_db_file" function.
+@Explain : File service module.
+    Provides file upload, download, and file management APIs, including streaming downloads.
 """
 
 from typing import Literal

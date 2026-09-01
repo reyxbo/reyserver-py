@@ -4,7 +4,9 @@
 @Time    : 2025-10-21
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Dependency bind methods.
+@Explain : Dependency injection module.
+    Provides convenient imports for commonly used dependency objects in route functions.
+    Through predefined singleton objects, API endpoints can easily access various contexts and resources during server operation.
 """
 
 from typing import Literal, overload, TYPE_CHECKING

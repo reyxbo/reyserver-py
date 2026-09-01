@@ -4,7 +4,8 @@
 @Time    : 2025-10-21
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Redirect methods.
+@Explain : Request forwarding module.
+    Provides server-wide request proxying and forwarding functionality.
 """
 
 from fastapi import APIRouter

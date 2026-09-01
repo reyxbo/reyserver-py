@@ -4,7 +4,8 @@
 @Time    : 2026-08-07
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Middleware methods.
+@Explain : Middleware module.
+    Provides middleware for route and response processing.
 """
 
 from starlette.types import Scope, Receive, Send

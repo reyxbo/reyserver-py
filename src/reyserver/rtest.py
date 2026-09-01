@@ -4,7 +4,8 @@
 @Time    : 2025-10-21
 @Author  : Rey
 @Contact : reyxbo@163.com
-@Explain : Test methods.
+@Explain : Testing module.
+    Provides server health and network performance testing APIs.
 """
 
 from typing import TypedDict, Literal
