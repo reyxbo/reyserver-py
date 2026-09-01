@@ -14,6 +14,7 @@ rbase : Base methods.
 rbind : Dependency bind methods.
 rcache : Cache methods.
 rclient : Client methods.
+rdb : Database methods.
 rfile : File methods.
 rlink : Link methods.
 rmiddleware : Middleware methods.

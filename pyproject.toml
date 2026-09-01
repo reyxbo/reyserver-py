@@ -1,11 +1,27 @@
 [project]
 name = "reyserver"
 version = "1.1.288"
-description = "Backend server method set."
+description = "Backend asynchronous server integration API framework built on FastAPI."
 readme = "README.md"
 requires-python = ">=3.12"
 license = {file = "LICENSE"}
-keywords = ["rey", "reyxbo", "server", "backend", "API", "async", "asynchronous"]
+keywords = [
+    "rey",
+    "reyxbo",
+    "server",
+    "backend",
+    "fastapi",
+    "API",
+    "async",
+    "asynchronous",
+    "cache",
+    "redis",
+    "file",
+    "link",
+    "public",
+    "redirect",
+    "RESTful",
+]
 authors = [
     {name = "Rey", email = "reyxbo@163.com"}
 ]
@@ -15,12 +31,11 @@ dependencies = [
     "reyclient",
     "reydb",
     "reykit",
-    "sqladmin[full]",
-    "uvicorn[standard]"
+    "uvicorn[standard]",
 ]
 
 [project.urls]
-Homepage = "https://www.reyxbo.com"
+Homepage = "https://reyxbo.com:2/release/python/reyserver"
 Repository = "https://github.com/reyxbo/reyserver-py.git"
 
 [build-system]
