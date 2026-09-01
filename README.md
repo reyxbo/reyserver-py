@@ -371,7 +371,7 @@ Main dependencies:
 | Python     | `>=3.12`                                                 |
 | Author     | `Rey`                                                      |
 | Email      | `reyxbo@163.com`                                         |
-| Homepage   | [reyxbo.com](https://reyxbo.com:2/release/python/reyserver) |
+| Homepage   | [reyxbo.com](https://www.reyxbo.com/release/python/reyserver) |
 | Repository | [reyserver-py](https://github.com/reyxbo/reyserver-py.git)  |
 
 ## Keywords
