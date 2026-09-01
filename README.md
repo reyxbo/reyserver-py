@@ -328,8 +328,8 @@ It can be used to verify server availability after deployment and measure networ
 
 # Module Overview
 
-| Module        | Function                                                 |
-| ------------- | -------------------------------------------------------- |
+| Module          | Function                                                 |
+| --------------- | -------------------------------------------------------- |
 | `rserver`     | Top-level server object and server startup               |
 | `rall`        | Unified exports for all methods                          |
 | `rauth`       | User authentication, permissions, and session management |
@@ -362,13 +362,13 @@ Main dependencies:
 
 # Project Information
 
-| Project    | Information                                                 |
-| ---------- | ----------------------------------------------------------- |
-| Name       | `reyserver`                                                 |
-| Version    | `1.1.288`                                                   |
-| Python     | `>=3.12`                                                    |
-| Author     | Rey                                                         |
-| Email      | `reyxbo@163.com`                                            |
+| Project    | Information                                                |
+| ---------- | ---------------------------------------------------------- |
+| Name       | `reyserver`                                              |
+| Version    | `1.1.288`                                                |
+| Python     | `>=3.12`                                                 |
+| Author     | `Rey`                                                      |
+| Email      | `reyxbo@163.com`                                         |
 | Homepage   | [reyxbo.com](https://reyxbo.com:2/release/python/reyserver) |
 | Repository | [reyserver-py](https://github.com/reyxbo/reyserver-py.git)  |
 
