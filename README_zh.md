@@ -367,7 +367,7 @@ if __name__ == "__main__":
 | Python     | `>=3.12`                                                 |
 | 作者       | `Rey`                                                      |
 | 邮箱       | `reyxbo@163.com`                                         |
-| Homepage   | [reyxbo.com](https://www.reyxbo.com/release/python/reyserver) |
+| Homepage   | [REYXBO](https://www.reyxbo.com/release/python/reyserver)   |
 | Repository | [reyserver-py](https://github.com/reyxbo/reyserver-py.git)  |
 
 ## 关键词
