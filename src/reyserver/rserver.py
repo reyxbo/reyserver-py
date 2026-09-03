@@ -554,8 +554,8 @@ class Server(ServerBase, Singleton):
         key: str | None = None,
         init_role_id: int | None = None,
         guest_user_id: int | None = None,
-        user_token_seconds: int = 3600, # Default 1 hours.
-        user_refresh_token_seconds: int = 2592000, # Default 30 day.
+        user_token_seconds: int = 3600, # Default 1 hour.
+        user_refresh_token_seconds: int = 2592000, # Default 30 days.
         admin_role_name: str = 'admin'
     ) -> None:
         """
