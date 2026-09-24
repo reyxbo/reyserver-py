@@ -34,7 +34,7 @@ class ServerORMTableLink(ServerBase, rorm.Table):
     __name__ = 'link'
     __comment__ = 'Mapping link table.'
     create_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record create time.')
-    update_time: rorm.Datetime = rorm.Field(field_default=':time', arg_default=now, not_null=True, index_n=True, comment='Record update time.')
+    update_time: rorm.Datetime = rorm.Field(field_default=':time', not_null=True, index_n=True, comment='Record update time.')
     expire_time: rorm.Datetime | None = rorm.Field(index_n=True, comment='Link expire time.')
     id: int = rorm.Field(key_auto=True, comment='ID.')
     url: str = rorm.Field(rorm.types.TEXT, not_null=True, comment='Redirect HTTP or HTTPS URL.')
@@ -119,8 +119,11 @@ def build_db_link(engine: DatabaseEngine | DatabaseEngineAsync) -> None:
         }
     ]
 
+    # Update time trigger.
+    update_time_triggers=[(ServerORMTableLink.__tablename__, 'update_time')]
+
     # Build.
-    engine.sync_engine.build(tables=tables, views_stats=views_stats, skip=True)
+    engine.sync_engine.build(tables=tables, views_stats=views_stats, update_time_triggers=update_time_triggers, skip=True)
 
 router_link = APIRouter()
 router_link_l = APIRouter()
