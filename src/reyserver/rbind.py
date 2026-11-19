@@ -89,7 +89,7 @@ class ServerBindInstanceDatabaseSuper(ServerBase):
 
             # Parameter.
             app: FastAPI = request.app
-            server: Server = app.extra['server']
+            server: Server = app.state['server']
 
             ## Check.
             if server.db is None:
@@ -307,7 +307,7 @@ async def depend_server(request: Request) -> 'Server':
 
     # Get.
     app: FastAPI = request.app
-    server: Server = app.extra['server']
+    server: Server = app.state['server']
 
     return server
 
@@ -322,7 +322,7 @@ async def depend_db(request: Request) -> DatabaseAsync:
 
     # Get.
     app: FastAPI = request.app
-    server: Server = app.extra['server']
+    server: Server = app.state['server']
     if server.db is None:
         throw(TypeError, server.db)
 

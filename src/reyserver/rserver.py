@@ -123,13 +123,13 @@ class Server(ServerBase, Singleton):
         self.redis = redis
         self.app = FastAPI(
             dependencies=depend,
-            lifespan=lifespan,
-            server=self
+            lifespan=lifespan
         )
         self._prefix = prefix or ''
+        self.app.state['server'] = self
 
         ## Shortcut.
-        self.extra = self.app.extra
+        self.state = self.app.state
         self.routes = self.app.routes
         self.get = self.app.get
         self.post = self.app.post
